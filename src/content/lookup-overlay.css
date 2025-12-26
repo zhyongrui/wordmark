@@ -1,0 +1,83 @@
+#wordmark-overlay {
+  position: fixed;
+  z-index: 2147483647;
+  max-width: 320px;
+  background: #ffffff;
+  color: #141312;
+  border: 1px solid #e0d6c8;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  padding: 12px;
+  font-family: "Times New Roman", Times, serif;
+}
+
+#wordmark-overlay.wordmark-overlay--corner {
+  right: 16px;
+  bottom: 16px;
+}
+
+#wordmark-overlay.wordmark-overlay--anchored {
+  left: 0;
+  top: 0;
+}
+
+#wordmark-overlay[hidden] {
+  display: none;
+}
+
+.wordmark-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5a5144;
+}
+
+.wordmark-close {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  color: #5a5144;
+}
+
+.wordmark-word {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.wordmark-definition {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.wordmark-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.wordmark-button {
+  border: 1px solid #d0c5b6;
+  background: #f7f2e9;
+  color: #2b241d;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wordmark-button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.wordmark-status {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8a7e6d;
+}

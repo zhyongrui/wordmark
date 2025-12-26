@@ -1,0 +1,173 @@
+openapi: 3.0.3
+info:
+  title: WordMark MVP Internal API
+  version: 1.0.0
+  description: |
+    Internal service interface between extension components (content/background/popup).
+    Not exposed over the network; used for message-based calls within the extension.
+paths:
+  /lookup:
+    post:
+      summary: Lookup selected text and record word entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - selectedText
+              properties:
+                selectedText:
+                  type: string
+                  description: Raw selected text from the page
+      responses:
+        "200":
+          description: Lookup result with recorded entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WordEntry"
+        "400":
+          description: Invalid selection (empty or multi-word after normalization)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /words:
+    get:
+      summary: List stored words with optional search
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Case-insensitive search query
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [count_desc]
+            default: count_desc
+      responses:
+        "200":
+          description: List of stored words
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WordEntryList"
+  /words/{normalizedWord}:
+    get:
+      summary: Get a single word entry by normalized key
+      parameters:
+        - name: normalizedWord
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Word entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WordEntry"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a word entry
+      parameters:
+        - name: normalizedWord
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /preferences/highlight:
+    get:
+      summary: Read highlight preference
+      responses:
+        "200":
+          description: Current highlight preference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HighlightPreference"
+    put:
+      summary: Update highlight preference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HighlightPreference"
+      responses:
+        "200":
+          description: Updated preference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HighlightPreference"
+components:
+  schemas:
+    WordEntry:
+      type: object
+      required:
+        - normalizedWord
+        - displayWord
+        - queryCount
+        - lastQueriedAt
+        - pronunciationAvailable
+      properties:
+        normalizedWord:
+          type: string
+        displayWord:
+          type: string
+        queryCount:
+          type: integer
+          minimum: 1
+        lastQueriedAt:
+          type: string
+          format: date-time
+        definition:
+          type: string
+          nullable: true
+        pronunciationAvailable:
+          type: boolean
+    WordEntryList:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WordEntry"
+    HighlightPreference:
+      type: object
+      required:
+        - highlightEnabled
+      properties:
+        highlightEnabled:
+          type: boolean
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string

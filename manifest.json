@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "WordMark",
+  "version": "0.1.0",
+  "description": "Reading-time vocabulary marking and memory tool.",
+  "action": {
+    "default_title": "WordMark",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["lookup-overlay.css"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ],
+  "options_page": "options.html",
+  "permissions": ["storage"],
+  "commands": {
+    "lookup-word": {
+      "suggested_key": {
+        "default": "Alt+W"
+      },
+      "description": "Lookup selected word"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WordMark</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <header class="wordmark-header">
+        <div class="wordmark-title">WordMark</div>
+        <div class="wordmark-count" id="word-count"></div>
+      </header>
+      <div class="wordmark-toggle">
+        <div class="wordmark-toggle-label">Highlights</div>
+        <button
+          id="highlight-toggle"
+          class="wordmark-toggle-button"
+          type="button"
+          aria-pressed="true"
+          aria-label="Toggle highlights"
+          data-enabled="true"
+        ></button>
+      </div>
+      <div class="wordmark-search">
+        <label class="wordmark-search-label" for="search-input">Search</label>
+        <input id="search-input" type="search" placeholder="Search words" autocomplete="off" />
+      </div>
+      <div id="word-list" class="wordmark-list"></div>
+      <div id="empty-state" class="wordmark-empty" hidden>No words yet.</div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
