@@ -1,0 +1,131 @@
+openapi: 3.0.3
+info:
+  title: WordMark Spec 002 Internal Translation API
+  version: 1.0.0
+  description: |
+    Internal service interface between extension components (content/background/options).
+    Not exposed over the network; used for message-based calls within the extension.
+
+    Privacy constraints:
+    - Requests MUST include only the looked-up word and (optionally) its definition text.
+    - MUST NOT include surrounding page content, selection context, or the full word list.
+paths:
+  /translation/request:
+    post:
+      summary: Request Chinese translation for a looked-up word (and optional definition)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranslationRequest"
+      responses:
+        "200":
+          description: Translation result (success or error)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranslationResponse"
+  /translation/settings:
+    get:
+      summary: Read translation settings (no secrets)
+      responses:
+        "200":
+          description: Current settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranslationSettings"
+    put:
+      summary: Update translation settings (no secrets)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranslationSettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranslationSettings"
+components:
+  schemas:
+    TranslationRequest:
+      type: object
+      required:
+        - word
+        - targetLang
+      properties:
+        word:
+          type: string
+          description: Looked-up English word (no surrounding page context).
+        definition:
+          type: string
+          nullable: true
+          description: Optional English definition text for the looked-up word (no surrounding context).
+        targetLang:
+          type: string
+          description: Target language (MVP: Chinese).
+          enum: ["zh"]
+    TranslationResponse:
+      oneOf:
+        - $ref: "#/components/schemas/TranslationSuccess"
+        - $ref: "#/components/schemas/TranslationError"
+    TranslationSuccess:
+      type: object
+      required:
+        - ok
+        - translatedWord
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        translatedWord:
+          type: string
+        translatedDefinition:
+          type: string
+          nullable: true
+    TranslationError:
+      type: object
+      required:
+        - ok
+        - error
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          enum:
+            - disabled
+            - not_configured
+            - offline
+            - quota_exceeded
+            - timeout
+            - provider_error
+        message:
+          type: string
+          nullable: true
+          description: Optional UI-safe message. MUST NOT include secrets.
+    TranslationSettings:
+      type: object
+      required:
+        - enabled
+        - providerId
+      properties:
+        enabled:
+          type: boolean
+          description: When false, translation requests must not perform any networking.
+        providerId:
+          type: string
+          description: Selected translation provider identifier (e.g., gemini).
+    TranslationSettingsUpdate:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        providerId:
+          type: string

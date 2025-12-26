@@ -156,6 +156,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if required or requested) in tests/unit/
 - [ ] TXXX Security hardening
+- [ ] TXXX [P] If optional network is introduced: add explicit opt-in, data minimization, API key
+      handling, and offline/quota fallback validation
 - [ ] TXXX Run quickstart.md validation
 
 ---

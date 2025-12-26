@@ -103,7 +103,8 @@
 
 - **CC-001**: Feature MUST stay within reading-time vocabulary marking/memory scope
 - **CC-002**: Privacy default: store word data only in `chrome.storage.local`; no network/analytics
-  unless opt-in
+  unless opt-in; if optional network is used, require explicit consent + data minimization + safe
+  API key handling + offline/quota fallback
 - **CC-003**: UX: hotkey lookup fast/non-blocking; definition/pronunciation UI non-obstructive;
   highlight low-interference with one-click disable
 - **CC-004**: Performance: incremental highlight (MutationObserver + throttling); avoid main-thread

@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2025-12-21
 
 ## Active Technologies
+- TypeScript 5.6.x + Browser extension APIs (MV3); embedded assets where applicable (002-translation)
+- `chrome.storage.local` (versioned schema + migrations) (002-translation)
 
 - TypeScript (project toolchain version aligned with repo) + Browser extension APIs; embedded dictionary dataset for basic definitions (001-wordmark-mvp-spec)
 
@@ -22,6 +24,7 @@ npm test && npm run lint
 TypeScript (project toolchain version aligned with repo): Follow standard conventions
 
 ## Recent Changes
+- 002-translation: Added TypeScript 5.6.x + Browser extension APIs (MV3); embedded assets where applicable
 
 - 001-wordmark-mvp-spec: Added TypeScript (project toolchain version aligned with repo) + Browser extension APIs; embedded dictionary dataset for basic definitions
 
