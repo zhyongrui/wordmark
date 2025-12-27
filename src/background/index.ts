@@ -1,4 +1,7 @@
-import { MessageTypes } from "../shared/messages";
+import { MessageTypes, type DefinitionBackfillRequestPayload } from "../shared/messages";
+import {
+  handleDefinitionBackfillRequest,
+} from "./handlers/definition-backfill";
 import { handleLookupRequest, type LookupRequestPayload } from "./handlers/lookup";
 import { handleTranslationRequest, type TranslationRequestPayload } from "./handlers/translation";
 import { handleDeleteWord, handleListWords, type DeleteWordPayload } from "./handlers/words";
@@ -94,6 +97,9 @@ const initializeBackground = () => {
           return true;
         case MessageTypes.TranslationRequest:
           handleTranslationRequest(payload as TranslationRequestPayload).then(sendResponse);
+          return true;
+        case MessageTypes.DefinitionBackfillRequest:
+          handleDefinitionBackfillRequest(payload as DefinitionBackfillRequestPayload).then(sendResponse);
           return true;
         default:
           return;

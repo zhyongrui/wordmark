@@ -66,10 +66,12 @@ Preparation: ensure at least 3 words have been looked up (e.g., `hello`, `world`
      - The list shows all queried words.
      - Default ordering is by `queryCount` descending.
      - Each row shows the word + metadata (count + last queried date).
+     - If a stored short Chinese label (`wordZh`) exists for an entry, it is shown inline after the English word.
 2. Search filtering:
    - Type a query like `wor`.
    - Expected:
      - Results are filtered case-insensitively.
+      - Filtering/search semantics remain English-only (the popup does not search by `wordZh`).
 3. Delete behavior:
    - Click **Delete** for one entry (e.g., `world`).
    - Expected:
@@ -118,4 +120,3 @@ to reproduce “first interaction after reload” behavior.
    - Delete a word in the popup.
    - Expected:
      - That word stops being highlighted in the ChatGPT page within ~2 seconds (when Highlights are ON).
-

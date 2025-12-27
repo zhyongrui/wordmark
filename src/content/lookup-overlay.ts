@@ -672,6 +672,21 @@ export const showTranslationLoading = () => {
   overlay.translationStatus.textContent = "";
 };
 
+export const showGeneratedDefinitionLoading = () => {
+  const overlay = getExistingOverlay();
+  if (!overlay) {
+    return;
+  }
+
+  overlay.translation.hidden = false;
+  overlay.translationTitle.textContent = "English definition";
+  overlay.translationWord.textContent = "Loading…";
+  overlay.translationDefinitionLabel.style.display = "none";
+  overlay.translationDefinition.style.display = "none";
+  overlay.translationDefinition.textContent = "";
+  overlay.translationStatus.textContent = "";
+};
+
 export type TranslationOverlayModel = {
   topText: string;
   englishDefinitionText: string;
@@ -770,6 +785,53 @@ export const showTranslationError = (message: string) => {
   overlay.translationDefinition.style.display = "none";
   overlay.translationDefinition.textContent = "";
   overlay.translationStatus.textContent = "";
+};
+
+export const showGeneratedDefinitionResult = (result: {
+  definitionEn: string;
+  definitionZh: string | null;
+  definitionSource: import("../shared/messages").DefinitionSource;
+}) => {
+  const overlay = getExistingOverlay();
+  if (!overlay) {
+    return;
+  }
+
+  overlay.translation.hidden = false;
+  overlay.translationTitle.textContent = "English definition";
+
+  overlay.translationWord.textContent = normalizeEnglishDefinition(result.definitionEn);
+
+  if (typeof result.definitionZh === "string" && result.definitionZh.trim()) {
+    overlay.translationDefinitionLabel.style.display = "block";
+    overlay.translationDefinition.style.display = "block";
+    overlay.translationDefinition.textContent = result.definitionZh.trim();
+    overlay.translationStatus.textContent = "";
+  } else {
+    overlay.translationDefinitionLabel.style.display = "none";
+    overlay.translationDefinition.style.display = "none";
+    overlay.translationDefinition.textContent = "";
+    overlay.translationStatus.textContent = "Translation unavailable. Press the shortcut again to retry.";
+  }
+};
+
+export const showGeneratedDefinitionError = (message: string) => {
+  const overlay = getExistingOverlay();
+  if (!overlay) {
+    return;
+  }
+
+  overlay.translation.hidden = false;
+  overlay.translationTitle.textContent = "English definition";
+  overlay.translationWord.textContent = "Definition unavailable.";
+  overlay.translationDefinitionLabel.style.display = "none";
+  overlay.translationDefinition.style.display = "none";
+  overlay.translationDefinition.textContent = "";
+
+  const trimmed = message.trim();
+  const includeRetryHint =
+    !/not configured/i.test(trimmed) && !/disabled/i.test(trimmed) && !/shortcut again to retry/i.test(trimmed);
+  overlay.translationStatus.textContent = includeRetryHint ? `${trimmed} Press the shortcut again to retry.` : trimmed;
 };
 
 const getOverlay = (): OverlayElements => getExistingOverlay() ?? (cachedOverlay = createOverlay());

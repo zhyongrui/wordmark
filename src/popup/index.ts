@@ -94,6 +94,12 @@ const renderList = () => {
     const word = document.createElement("div");
     word.className = "wordmark-word";
     word.textContent = entry.displayWord;
+    if (typeof entry.wordZh === "string" && entry.wordZh.trim()) {
+      const zh = document.createElement("span");
+      zh.className = "wordmark-word-zh";
+      zh.textContent = ` ${entry.wordZh.trim()}`;
+      word.appendChild(zh);
+    }
 
     const meta = document.createElement("div");
     meta.className = "wordmark-meta";

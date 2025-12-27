@@ -1,4 +1,5 @@
 import { lookupDictionary } from "../../shared/dictionary";
+import type { DefinitionSource } from "../../shared/messages";
 import { shapeLookupResult } from "../../shared/word/lookup";
 import { normalizeWord } from "../../shared/word/normalize";
 import { recordLookup } from "../../shared/word/store";
@@ -9,7 +10,7 @@ export type LookupRequestPayload = {
 };
 
 export type LookupResponse =
-  | { ok: true; entry: Awaited<ReturnType<typeof recordLookup>> }
+  | { ok: true; entry: Awaited<ReturnType<typeof recordLookup>> & { definitionSource: DefinitionSource } }
   | { ok: false; error: "invalid-selection" | "invalid-payload" };
 
 export const handleLookupRequest = async (payload: LookupRequestPayload): Promise<LookupResponse> => {
@@ -34,6 +35,7 @@ export const handleLookupRequest = async (payload: LookupRequestPayload): Promis
   const entry = {
     ...storedEntry,
     definition: result.definition,
+    definitionSource: "local" as const,
     pronunciationAvailable: result.pronunciationAvailable
   };
   return { ok: true, entry };

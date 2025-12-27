@@ -9,8 +9,8 @@
 
 Spec 001 (WordMark MVP v0.1) is complete and frozen. Spec 002 is a strictly additive feature that:
 
-- Does NOT change Spec 001 lookup, highlighting, or popup list behaviors.
-- Does NOT change Spec 001 counting/normalization/storage semantics.
+- Does NOT change Spec 001 lookup/highlighting behavior or popup sort/search/delete semantics.
+- Does NOT change Spec 001 counting/normalization semantics (optional additive fields only).
 - Adds an optional, explicitly user-triggered translation capability for already-looked-up content.
 
 ## Clarifications
@@ -28,6 +28,7 @@ Spec 001 (WordMark MVP v0.1) is complete and frozen. Spec 002 is a strictly addi
 - Q: Cache strategy — none vs in-memory TTL vs persistent → A: In-memory TTL cache in the background for translation results keyed by (word, definition text, target language); TTL ~10–30 minutes; never persisted to disk.
 - Q: Failure retry behavior when translation fails (Translate button removed) → A: No automatic retries; show a short error + “press the shortcut again to retry”.
 - Q: If the English definition is unavailable, should translation still be attempted? → A: Yes; attempt word translation; keep “Definition unavailable.” for the English definition, and omit the definition-translation block.
+- Q: Should the popup show a stored short Chinese label for a word (wordZh)? → A: Yes; if a word entry has `wordZh`, the popup shows it inline after the English word. `wordZh` is written during successful translation flows (not by popup), and popup never triggers networking.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -122,6 +123,10 @@ that disabling translation stops network usage immediately.
 - **FR-011**: The system MUST provide a safe API key configuration flow and local storage handling for
   credentials. API key configuration MUST be provided in the extension Options page, stored locally
   under a dedicated key separate from Spec 001 word data, and MUST NOT be exposed to content scripts.
+- **FR-012**: The system MAY persist a short Chinese label `wordZh` for a looked-up word inside the
+  existing word store entry (keyed by `normalizedWord`) when a word translation succeeds. The popup
+  list MUST show `wordZh` inline after the English word when present; it MUST NOT request translation
+  networking or change popup sort/search/delete semantics.
 
 ### Non-Functional Requirements
 

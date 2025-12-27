@@ -255,6 +255,51 @@ reorder overlay information architecture, add TTL caching, and update smoke step
 
 ---
 
+## Phase 6: Spec Update — Popup inline `wordZh` display (US3)
+
+**Purpose**: Show a short Chinese translation for each stored word in the popup list row (inline),
+without triggering any new networking from the popup. Persist `wordZh` into the existing word store
+as an optional field, written during lookup/translation-success flows (not popup lazy-load).
+
+### Tests (write first; must fail before implementation) ⚠️
+
+- [x] T036 [P] [US3] Add list-words response coverage for `wordZh` in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/tests/unit/background/list-words-wordzh.test.ts; AC: test
+  sets up a stored word with `wordZh`, calls `handleListWords()`, and asserts the returned `WordEntry`
+  includes `wordZh` (no schema reset/migration loss); test FAILS before implementation.
+- [x] T037 [P] [US3] Ensure sort/search semantics are unchanged with the new optional `wordZh` field in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/tests/unit/word-logic/sort-filter.test.ts; AC: tests verify
+  (a) sorting order is unchanged when entries include `wordZh`, and (b) filtering/search remains
+  English-only (querying by Chinese `wordZh` does not match); tests FAIL before implementation.
+
+### Implementation
+
+- [x] T038 [US3] Update Spec 002 data model + storage schema to persist `wordZh?: string` on `WordEntry`
+  in /Users/zhaoyongrui/Desktop/Code/wordmark/specs/002-translation/spec.md,
+  /Users/zhaoyongrui/Desktop/Code/wordmark/specs/002-translation/data-model.md, and
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/shared/storage/schema.ts (and
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/shared/storage/migrate.ts if needed); AC: no schema
+  version bump, existing stored data remains readable, `npm run typecheck` passes.
+- [x] T039 [US3] Write `wordZh` on translation success (and never from popup): add a safe store update
+  helper in /Users/zhaoyongrui/Desktop/Code/wordmark/src/shared/word/store.ts and call it from
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/background/handlers/translation.ts when
+  `TranslationResponse.ok`; AC: `wordZh` is trimmed, short, and optional; failures do not write;
+  Spec 001 counting/normalization/highlights/popup behaviors remain unchanged.
+- [x] T040 [US3] Render popup list rows as `EnglishWord` + inline `wordZh` (when present) in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/popup/index.ts (and
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/popup/styles.css if needed); AC: if `wordZh` is missing,
+  popup shows the current UI with no extra placeholder and does not trigger any new messages/networking.
+
+### Smoke / Docs
+
+- [x] T041 [P] Update manual smoke steps to cover popup inline `wordZh` display in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/specs/002-translation/quickstart.md and
+  /Users/zhaoyongrui/Desktop/Code/wordmark/tests/integration/extension-flows/smoke-test.md; AC: docs
+  include (a) a run that confirms popup shows `wordZh` only when it exists, and (b) a default-off run
+  confirming no translation networking and popup behavior unchanged.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -264,6 +309,8 @@ reorder overlay information architecture, add TTL caching, and update smoke step
 - **US1 (Phase 3)**: Depends on Foundational completion
 - **US2 (Phase 4)**: Depends on Foundational completion; must remain default-off and safe when unconfigured
 - **Polish (Phase N)**: After desired user stories are complete
+- **Phase 5 (auto-translate + overlay layout)**: Depends on US1 + US2 completion (safe opt-in + handler wiring)
+- **Phase 6 (popup `wordZh`)**: Depends on Phase 5 translation flow (stores `wordZh` on translation success)
 
 ### Dependency Graph
 
@@ -271,6 +318,8 @@ Setup (T001-T003)
 → Foundational (T004-T015)
 → {US1 (T016-T022), US2 (T023-T025)}
 → Polish (T026-T028)
+→ Phase 5 (T029-T035)
+→ Phase 6 (T036-T041)
 
 ### Parallel Opportunities
 

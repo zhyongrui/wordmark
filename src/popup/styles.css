@@ -140,6 +140,11 @@ body {
   font-size: 14px;
 }
 
+.wordmark-word-zh {
+  font-weight: 400;
+  color: #6c5f51;
+}
+
 .wordmark-meta {
   font-size: 12px;
   color: #6c5f51;

@@ -3,6 +3,7 @@ export const SCHEMA_VERSION = 1;
 export type WordEntry = {
   normalizedWord: string;
   displayWord: string;
+  wordZh?: string;
   queryCount: number;
   lastQueriedAt: string;
   definition?: string | null;

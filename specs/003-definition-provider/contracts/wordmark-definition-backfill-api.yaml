@@ -1,0 +1,80 @@
+openapi: 3.0.3
+info:
+  title: WordMark Spec 003 Internal Definition Backfill API
+  version: 1.0.0
+  description: |
+    Internal service interface between extension components (content/background/options).
+    Not exposed over the network; used for message-based calls within the extension.
+
+    Privacy constraints:
+    - Requests MUST include only the looked-up word.
+    - MUST NOT include surrounding page content, selection context, or the full word list.
+paths:
+  /definition/backfill/request:
+    post:
+      summary: Backfill a short English definition and translate it to Chinese
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DefinitionBackfillRequest"
+      responses:
+        "200":
+          description: Backfill result (success or error)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefinitionBackfillResponse"
+components:
+  schemas:
+    DefinitionBackfillRequest:
+      type: object
+      required:
+        - word
+      properties:
+        word:
+          type: string
+          description: Looked-up English word (no surrounding context).
+    DefinitionBackfillResponse:
+      oneOf:
+        - $ref: "#/components/schemas/DefinitionBackfillSuccess"
+        - $ref: "#/components/schemas/DefinitionBackfillError"
+    DefinitionBackfillSuccess:
+      type: object
+      required:
+        - ok
+        - englishDefinition
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        englishDefinition:
+          type: string
+          description: Plain-text English definition (short, 1–2 sentences; no markdown).
+        translatedDefinition:
+          type: string
+          nullable: true
+          description: Chinese translation of englishDefinition (plain text).
+    DefinitionBackfillError:
+      type: object
+      required:
+        - ok
+        - error
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          enum:
+            - disabled
+            - not_configured
+            - offline
+            - quota_exceeded
+            - timeout
+            - provider_error
+        message:
+          type: string
+          nullable: true
+          description: Optional UI-safe message. MUST NOT include secrets.

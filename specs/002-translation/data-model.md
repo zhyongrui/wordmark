@@ -1,16 +1,27 @@
 # Data Model: Optional Translation (Chinese) (Spec 002)
 
-This data model is “translation-only” and MUST NOT change Spec 001 word storage semantics.
+This data model is “translation-first” and MUST NOT change Spec 001 word counting/normalization
+semantics. It may add optional fields to the existing word store entries (e.g., `wordZh`) without
+changing Spec 001 sort/search/delete behavior.
 
 ## Existing Entities (Spec 001)
 
 - **WordEntry** (keyed by `normalizedWord`): recorded word + display word + queryCount + lastQueriedAt
-  (+ definition/pronunciation flags).
+  (+ definition/pronunciation flags) + optional short Chinese label `wordZh` (word-level only).
 - **Preferences**: includes `highlightEnabled`.
 
 ## New Records (Spec 002)
 
 Spec 002 introduces separate records stored alongside (but not inside) Spec 001 storage.
+
+### WordEntry augmentation (Spec 002)
+
+Spec 002 may persist `wordZh?: string` on `WordEntry` (inside the existing Spec 001 word store key)
+to support popup inline display of a short word-level Chinese label.
+
+**Rules**:
+- `wordZh` is written only during lookup/translation-success flows (not by popup lazy-loading).
+- Popup renders `wordZh` only when present and never triggers networking.
 
 ### TranslationSettings
 
@@ -60,6 +71,7 @@ retention/clear controls.
 ## Storage Layout (Spec 002 vs Spec 001)
 
 - Spec 001 key `wordmark:storage` remains unchanged (no schema version bump required for Spec 002).
+- Word entries in `wordmark:storage` may include `wordZh?: string` (additive, optional).
 - Spec 002 uses separate `chrome.storage.local` keys, for example:
   - `wordmark:translation:settings`
   - `wordmark:translation:secrets`

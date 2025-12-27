@@ -77,11 +77,13 @@ export const writeStore = async (next: StorageEnvelope): Promise<void> => {
 export const recordLookup = async (entry: Omit<WordEntry, "queryCount" | "lastQueriedAt">): Promise<WordEntry> => {
   const store = await readStore();
   const existing = store.wordsByKey[entry.normalizedWord];
+  const existingWordZh = existing && typeof existing.wordZh === "string" && existing.wordZh.trim() ? existing.wordZh : null;
   const nextEntry: WordEntry = {
     ...entry,
     queryCount: existing ? existing.queryCount + 1 : 1,
     lastQueriedAt: new Date().toISOString(),
-    definition: entry.definition ?? null
+    definition: entry.definition ?? null,
+    wordZh: existingWordZh ?? entry.wordZh
   };
 
   const nextStore: StorageEnvelope = {
@@ -94,6 +96,43 @@ export const recordLookup = async (entry: Omit<WordEntry, "queryCount" | "lastQu
 
   await writeStore(nextStore);
   return nextEntry;
+};
+
+export const updateWordZh = async (normalizedWord: string, wordZh: string): Promise<void> => {
+  const normalized = typeof normalizedWord === "string" ? normalizedWord.trim() : "";
+  const raw = typeof wordZh === "string" ? wordZh : "";
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!normalized || !trimmed) {
+    return;
+  }
+
+  const clamped = trimmed.length > 64 ? trimmed.slice(0, 64).trim() : trimmed;
+  if (!clamped) {
+    return;
+  }
+
+  const store = await readStore();
+  const existing = store.wordsByKey[normalized];
+  if (!existing) {
+    return;
+  }
+
+  if (existing.wordZh === clamped) {
+    return;
+  }
+
+  const nextStore: StorageEnvelope = {
+    ...store,
+    wordsByKey: {
+      ...store.wordsByKey,
+      [normalized]: {
+        ...existing,
+        wordZh: clamped
+      }
+    }
+  };
+
+  await writeStore(nextStore);
 };
 
 export const deleteWordEntry = async (normalizedWord: string): Promise<void> => {

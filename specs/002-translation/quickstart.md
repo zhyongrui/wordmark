@@ -56,15 +56,15 @@ Precondition: use the existing WordMark shortcut to open the in-page lookup over
 
 1. Enabled but no API key:
    - Enable translation but clear the API key.
-   - Click **Translate** in the overlay.
+   - Press the shortcut to open the overlay.
    - Expected: a clear “not configured” state; no crashes; no network retries.
 2. Offline:
    - Disconnect network (airplane mode).
-   - Click **Translate**.
+   - Press the shortcut to open the overlay.
    - Expected: a clear “unavailable/offline” state; Spec 001 lookup/highlight/popup remain usable.
 3. Quota exceeded / rate-limited:
    - Use a provider account/key that is out of quota or temporarily rate-limited.
-   - Click **Translate**.
+   - Press the shortcut to open the overlay.
    - Expected: a clear “quota exceeded/unavailable” state; no crashes; no background retry loops; Spec 001 remains usable.
 4. Timeout (slow network):
    - Throttle network (e.g., DevTools → Network → Slow 3G) so translation cannot complete promptly.
@@ -77,8 +77,21 @@ Precondition: use the existing WordMark shortcut to open the in-page lookup over
 - Cache: Successful translations may be reused in-memory for a short TTL (no disk persistence). Repeating the same lookup
   shortly may not trigger another provider request; after the TTL expires, a new request may be sent.
 
+## Popup inline `wordZh` (word-level)
+
+Precondition: `wordZh` is written only when a word translation succeeds (no popup lazy-load).
+
+1. With translation enabled and API key configured, look up `hello` via the shortcut and wait for the word translation.
+2. Open the extension popup.
+3. Expected:
+   - The `hello` row shows an inline short Chinese label after the English word (e.g., `Hello 你好`).
+   - The popup does not show long definition translations; it only shows `wordZh` when present.
+   - Opening the popup does not trigger any translation/definition network requests.
+4. Look up a word while translation is disabled (or before any successful translation) and open the popup again.
+5. Expected: entries without `wordZh` show only the English word (no placeholder).
+
 ## Validation Record
 
 - 2025-12-26: `npm test` ✅, `npm run lint` ✅, `npm run typecheck` ✅, `npm run build` ✅
-- 2025-12-27: `npm test` ✅, `npm run build` ✅ (Spec 002 auto-translate + overlay layout update)
+- 2025-12-27: `npm test` ✅, `npm run build` ✅ (Spec 002 auto-translate + overlay layout + popup wordZh)
 - Manual (required): run `tests/integration/extension-flows/smoke-test.md` with translation disabled to confirm Spec 001 behavior is unchanged and no translation networking occurs by default.

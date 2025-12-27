@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { WordEntry } from "../../../src/shared/storage/schema";
 import { filterWordEntries, sortWordEntries } from "../../../src/shared/word/list";
 
-const makeEntry = (overrides: Partial<WordEntry>): WordEntry => ({
+const makeEntry = (overrides: Partial<WordEntry & { wordZh?: string }>): WordEntry => ({
   normalizedWord: "word",
   displayWord: "Word",
   queryCount: 1,
@@ -17,7 +17,7 @@ describe("sortWordEntries", () => {
     const entries = [
       makeEntry({ normalizedWord: "alpha", queryCount: 2, lastQueriedAt: "2025-01-01T00:00:00.000Z" }),
       makeEntry({ normalizedWord: "beta", queryCount: 3, lastQueriedAt: "2025-01-03T00:00:00.000Z" }),
-      makeEntry({ normalizedWord: "gamma", queryCount: 3, lastQueriedAt: "2025-01-02T00:00:00.000Z" })
+      makeEntry({ normalizedWord: "gamma", queryCount: 3, lastQueriedAt: "2025-01-02T00:00:00.000Z", wordZh: "伽马" })
     ];
 
     const sorted = sortWordEntries(entries);
@@ -41,5 +41,11 @@ describe("filterWordEntries", () => {
     const entries = [makeEntry({ normalizedWord: "hello" }), makeEntry({ normalizedWord: "world" })];
     const filtered = filterWordEntries(entries, "   ");
     expect(filtered).toHaveLength(2);
+  });
+
+  it("does not match the optional wordZh field", () => {
+    const entries = [makeEntry({ normalizedWord: "hello", displayWord: "Hello", wordZh: "你好" })];
+    const filtered = filterWordEntries(entries, "你好");
+    expect(filtered).toHaveLength(0);
   });
 });

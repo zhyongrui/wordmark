@@ -8,6 +8,8 @@ import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/tra
 import { geminiProvider } from "../../shared/translation/providers/gemini";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
+import { normalizeWord } from "../../shared/word/normalize";
+import { updateWordZh } from "../../shared/word/store";
 
 export type TranslationRequestPayload = TranslationRequest;
 
@@ -54,23 +56,35 @@ export const handleTranslationRequest = async (
 
   const dedupeKey = makeDedupeKey(provider.id, request);
   const cached = translationResultCache.get(dedupeKey);
-  if (cached) {
-    return cached;
-  }
-  return await inSessionDeduper.dedupe(dedupeKey, async () => {
-    const cachedAgain = translationResultCache.get(dedupeKey);
-    if (cachedAgain) {
-      return cachedAgain;
-    }
-
-    try {
-      const response = await provider.translate(request, apiKey);
-      if (response.ok) {
-        translationResultCache.set(dedupeKey, response);
+  const response: TranslationResponse =
+    cached ??
+    (await inSessionDeduper.dedupe(dedupeKey, async () => {
+      const cachedAgain = translationResultCache.get(dedupeKey);
+      if (cachedAgain) {
+        return cachedAgain;
       }
-      return response;
-    } catch {
-      return createTranslationError("provider_error");
+
+      try {
+        const next = await provider.translate(request, apiKey);
+        if (next.ok) {
+          translationResultCache.set(dedupeKey, next);
+        }
+        return next;
+      } catch {
+        return createTranslationError("provider_error");
+      }
+    }));
+
+  if (response.ok) {
+    const normalizedWord = normalizeWord(request.word);
+    if (normalizedWord) {
+      try {
+        await updateWordZh(normalizedWord, response.translatedWord);
+      } catch {
+        // ignore storage errors
+      }
     }
-  });
+  }
+
+  return response;
 };

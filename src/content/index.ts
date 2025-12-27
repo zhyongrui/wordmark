@@ -1,4 +1,4 @@
-import { MessageTypes } from "../shared/messages";
+import { MessageTypes, type DefinitionBackfillResponse, type DefinitionSource } from "../shared/messages";
 import {
   bumpAutoCloseIgnore,
   captureSelectionRect,
@@ -10,6 +10,9 @@ import {
   setOverlayHideListener,
   shouldIgnoreAutoClose,
   resetTranslationUi,
+  showGeneratedDefinitionError,
+  showGeneratedDefinitionLoading,
+  showGeneratedDefinitionResult,
   showTranslationError,
   showTranslationLoading,
   showLookupOverlay,
@@ -23,7 +26,15 @@ import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/tra
 import type { TranslationResponse } from "../shared/translation/types";
 
 type LookupResponse =
-  | { ok: true; entry: { displayWord: string; definition: string | null; pronunciationAvailable: boolean } }
+  | {
+      ok: true;
+      entry: {
+        displayWord: string;
+        definition: string | null;
+        definitionSource: DefinitionSource;
+        pronunciationAvailable: boolean;
+      };
+    }
   | { ok: false; error: string };
 
 type WordsResponse =
@@ -42,6 +53,23 @@ let translationEnabled = false;
 let latestLookup:
   | { sessionId: number; word: string; definition: string | null }
   | null = null;
+
+const getDefinitionBackfillErrorMessage = (error: Exclude<DefinitionBackfillResponse, { ok: true }>["error"]) => {
+  switch (error) {
+    case "disabled":
+      return "Definition backfill is disabled.";
+    case "offline":
+      return "Definition unavailable (offline).";
+    case "quota_exceeded":
+      return "Definition unavailable (quota exceeded).";
+    case "timeout":
+      return "Definition request timed out.";
+    case "provider_error":
+      return "Definition unavailable.";
+    case "not_configured":
+      return "Definition not configured. Set an API key in Options.";
+  }
+};
 
 const sendMessage = async <T>(message: unknown): Promise<T | null> => {
   if (!chrome?.runtime?.sendMessage) {
@@ -102,6 +130,9 @@ const triggerLookup = async () => {
   translationEnabled = Boolean(settings.enabled);
   if (translationEnabled) {
     void requestTranslation(sessionId, entry.displayWord, entry.definition);
+    if (entry.definition == null) {
+      void requestDefinitionBackfill(sessionId, entry.displayWord);
+    }
   }
 };
 
@@ -115,6 +146,9 @@ const requestTranslation = async (sessionId: number, word: string, definition: s
 
   bumpAutoCloseIgnore(250);
   showTranslationLoading();
+  if (definition == null) {
+    showGeneratedDefinitionLoading();
+  }
 
   const response = await sendMessage<TranslationResponse>({
     type: MessageTypes.TranslationRequest,
@@ -151,6 +185,47 @@ const requestTranslation = async (sessionId: number, word: string, definition: s
   }
 
   showTranslationError(response.message ?? "Translation unavailable.");
+};
+
+const requestDefinitionBackfill = async (sessionId: number, word: string) => {
+  if (sessionId !== lookupSessionId) {
+    return;
+  }
+  if (!translationEnabled) {
+    return;
+  }
+
+  bumpAutoCloseIgnore(250);
+  showGeneratedDefinitionLoading();
+
+  const response = await sendMessage<DefinitionBackfillResponse>({
+    type: MessageTypes.DefinitionBackfillRequest,
+    payload: { word }
+  });
+
+  if (sessionId !== lookupSessionId) {
+    return;
+  }
+  if (!translationEnabled) {
+    return;
+  }
+
+  if (!response) {
+    showGeneratedDefinitionError("Definition unavailable. Reload the extension and try again.");
+    return;
+  }
+
+  if (response.ok) {
+    showGeneratedDefinitionResult(response);
+    return;
+  }
+
+  if (response.error === "not_configured") {
+    showGeneratedDefinitionError("Definition not configured. Set an API key in Options.");
+    return;
+  }
+
+  showGeneratedDefinitionError(getDefinitionBackfillErrorMessage(response.error));
 };
 
 const syncTranslationEnabledState = async () => {
