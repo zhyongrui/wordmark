@@ -4,6 +4,7 @@ type OverlayContent = {
   pronunciationAvailable: boolean;
   status?: string;
   onPronounce?: () => void;
+  onTranslate?: () => void;
   anchorRect?: AnchorRect | null;
 };
 
@@ -426,11 +427,50 @@ const createOverlay = () => {
   actions.className = "wordmark-actions";
 
   const pronounce = document.createElement("button");
-  pronounce.className = "wordmark-button";
+  pronounce.className = "wordmark-button wordmark-button--pronounce";
   pronounce.type = "button";
   pronounce.textContent = "Play pronunciation";
 
+  const translate = document.createElement("button");
+  translate.className = "wordmark-button wordmark-button--translate";
+  translate.type = "button";
+  translate.textContent = "Translate";
+  translate.hidden = true;
+
   actions.appendChild(pronounce);
+  actions.appendChild(translate);
+
+  const translation = document.createElement("div");
+  translation.className = "wordmark-translation";
+  translation.hidden = true;
+
+  const translationTitle = document.createElement("div");
+  translationTitle.className = "wordmark-translation-title";
+  translationTitle.textContent = "Chinese translation";
+
+  const translationWordLabel = document.createElement("div");
+  translationWordLabel.className = "wordmark-translation-label wordmark-translation-word-label";
+  translationWordLabel.textContent = "Word (ZH)";
+
+  const translationWord = document.createElement("div");
+  translationWord.className = "wordmark-translation-value wordmark-translation-word";
+
+  const translationDefinitionLabel = document.createElement("div");
+  translationDefinitionLabel.className = "wordmark-translation-label wordmark-translation-definition-label";
+  translationDefinitionLabel.textContent = "Definition (ZH)";
+
+  const translationDefinition = document.createElement("div");
+  translationDefinition.className = "wordmark-translation-value wordmark-translation-definition";
+
+  const translationStatus = document.createElement("div");
+  translationStatus.className = "wordmark-translation-status";
+
+  translation.appendChild(translationTitle);
+  translation.appendChild(translationWordLabel);
+  translation.appendChild(translationWord);
+  translation.appendChild(translationDefinitionLabel);
+  translation.appendChild(translationDefinition);
+  translation.appendChild(translationStatus);
 
   const status = document.createElement("div");
   status.className = "wordmark-status";
@@ -439,11 +479,25 @@ const createOverlay = () => {
   root.appendChild(word);
   root.appendChild(definition);
   root.appendChild(actions);
+  root.appendChild(translation);
   root.appendChild(status);
 
   (document.documentElement ?? document.body).appendChild(root);
 
-  return { root, word, definition, pronounce, status };
+  return {
+    root,
+    word,
+    definition,
+    pronounce,
+    translate,
+    translation,
+    translationWordLabel,
+    translationWord,
+    translationDefinitionLabel,
+    translationDefinition,
+    translationStatus,
+    status
+  };
 };
 
 type OverlayElements = ReturnType<typeof createOverlay>;
@@ -461,24 +515,179 @@ const getExistingOverlay = (): OverlayElements | null => {
     return null;
   }
 
-  const buttons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-button");
-  const pronounce = buttons[0] ?? (existing.querySelector(".wordmark-button") as HTMLButtonElement);
-  if (buttons.length > 1) {
-    buttons.forEach((button, index) => {
-      if (index > 0) {
-        button.remove();
-      }
-    });
+  const pronounceButtons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-button--pronounce");
+  const pronounce =
+    pronounceButtons[0] ??
+    (existing.querySelector(".wordmark-button") as HTMLButtonElement | null) ??
+    document.createElement("button");
+  pronounceButtons.forEach((button, index) => {
+    if (index > 0) {
+      button.remove();
+    }
+  });
+  pronounce.classList.add("wordmark-button", "wordmark-button--pronounce");
+
+  const translateButtons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-button--translate");
+  let translate = translateButtons[0] ?? null;
+  translateButtons.forEach((button, index) => {
+    if (index > 0) {
+      button.remove();
+    }
+  });
+
+  const actions = existing.querySelector(".wordmark-actions") as HTMLDivElement | null;
+  if (!translate) {
+    translate = document.createElement("button");
+    translate.className = "wordmark-button wordmark-button--translate";
+    translate.type = "button";
+    translate.textContent = "Translate";
+    translate.hidden = true;
+    actions?.appendChild(translate);
   }
+
+  let translation = existing.querySelector(".wordmark-translation") as HTMLDivElement | null;
+  if (!translation) {
+    translation = document.createElement("div");
+    translation.className = "wordmark-translation";
+    translation.hidden = true;
+    existing.insertBefore(translation, existing.querySelector(".wordmark-status"));
+  }
+
+  const ensureChild = <T extends HTMLElement>(selector: string, create: () => T): T => {
+    const found = translation.querySelector(selector) as T | null;
+    if (found) {
+      return found;
+    }
+    const next = create();
+    translation.appendChild(next);
+    return next;
+  };
+
+  const translationTitle = ensureChild(".wordmark-translation-title", () => {
+    const element = document.createElement("div");
+    element.className = "wordmark-translation-title";
+    element.textContent = "Chinese translation";
+    return element;
+  });
+  void translationTitle;
+
+  const translationWordLabel = ensureChild(".wordmark-translation-word-label", () => {
+    const element = document.createElement("div");
+    element.className = "wordmark-translation-label wordmark-translation-word-label";
+    element.textContent = "Word (ZH)";
+    return element;
+  });
+
+  const translationWord = ensureChild(".wordmark-translation-word", () => {
+    const element = document.createElement("div");
+    element.className = "wordmark-translation-value wordmark-translation-word";
+    return element;
+  });
+
+  const translationDefinitionLabel = ensureChild(".wordmark-translation-definition-label", () => {
+    const element = document.createElement("div");
+    element.className = "wordmark-translation-label wordmark-translation-definition-label";
+    element.textContent = "Definition (ZH)";
+    return element;
+  });
+
+  const translationDefinition = ensureChild(".wordmark-translation-definition", () => {
+    const element = document.createElement("div");
+    element.className = "wordmark-translation-value wordmark-translation-definition";
+    return element;
+  });
+
+  const translationStatus = ensureChild(".wordmark-translation-status", () => {
+    const element = document.createElement("div");
+    element.className = "wordmark-translation-status";
+    return element;
+  });
 
   cachedOverlay = {
     root: existing,
     word: existing.querySelector(".wordmark-word") as HTMLDivElement,
     definition: existing.querySelector(".wordmark-definition") as HTMLDivElement,
     pronounce,
+    translate,
+    translation,
+    translationWordLabel,
+    translationWord,
+    translationDefinitionLabel,
+    translationDefinition,
+    translationStatus,
     status: existing.querySelector(".wordmark-status") as HTMLDivElement
   };
   return cachedOverlay;
+};
+
+export const setTranslateAvailable = (onTranslate: (() => void) | null) => {
+  const overlay = getExistingOverlay();
+  if (!overlay) {
+    return;
+  }
+
+  overlay.translate.hidden = !onTranslate;
+  overlay.translate.disabled = false;
+  overlay.translate.onclick = onTranslate ?? null;
+
+  if (!onTranslate) {
+    overlay.translation.hidden = true;
+    overlay.translationWord.textContent = "";
+    overlay.translationDefinition.textContent = "";
+    overlay.translationStatus.textContent = "";
+  }
+};
+
+export const showTranslationLoading = () => {
+  const overlay = getExistingOverlay();
+  if (!overlay) {
+    return;
+  }
+  overlay.translate.disabled = true;
+  overlay.translation.hidden = false;
+  overlay.translationWord.textContent = "";
+  overlay.translationDefinitionLabel.style.display = "none";
+  overlay.translationDefinition.style.display = "none";
+  overlay.translationDefinition.textContent = "";
+  overlay.translationStatus.textContent = "Translating…";
+};
+
+export const showTranslationResult = (result: { translatedWord: string; translatedDefinition?: string | null }) => {
+  const overlay = getExistingOverlay();
+  if (!overlay) {
+    return;
+  }
+
+  overlay.translate.disabled = false;
+  overlay.translation.hidden = false;
+  overlay.translationStatus.textContent = "";
+  overlay.translationWord.textContent = result.translatedWord;
+
+  const definition = typeof result.translatedDefinition === "string" ? result.translatedDefinition : null;
+  if (definition && definition.trim()) {
+    overlay.translationDefinitionLabel.style.display = "block";
+    overlay.translationDefinition.style.display = "block";
+    overlay.translationDefinition.textContent = definition;
+  } else {
+    overlay.translationDefinitionLabel.style.display = "none";
+    overlay.translationDefinition.style.display = "none";
+    overlay.translationDefinition.textContent = "";
+  }
+};
+
+export const showTranslationError = (message: string) => {
+  const overlay = getExistingOverlay();
+  if (!overlay) {
+    return;
+  }
+
+  overlay.translate.disabled = false;
+  overlay.translation.hidden = false;
+  overlay.translationWord.textContent = "";
+  overlay.translationDefinitionLabel.style.display = "none";
+  overlay.translationDefinition.style.display = "none";
+  overlay.translationDefinition.textContent = "";
+  overlay.translationStatus.textContent = message;
 };
 
 const getOverlay = (): OverlayElements => getExistingOverlay() ?? (cachedOverlay = createOverlay());
@@ -520,6 +729,13 @@ export const showLookupOverlay = (content: OverlayContent) => {
   overlay.pronounce.disabled = !content.pronunciationAvailable;
   overlay.pronounce.style.display = content.pronunciationAvailable ? "inline-flex" : "none";
   overlay.pronounce.onclick = content.onPronounce ?? null;
+  overlay.translate.hidden = !content.onTranslate;
+  overlay.translate.disabled = false;
+  overlay.translate.onclick = content.onTranslate ?? null;
+  overlay.translation.hidden = true;
+  overlay.translationWord.textContent = "";
+  overlay.translationDefinition.textContent = "";
+  overlay.translationStatus.textContent = "";
   overlay.root.hidden = false;
   void positionOverlay(overlay.root, content.anchorRect);
 };

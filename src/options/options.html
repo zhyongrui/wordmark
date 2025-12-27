@@ -4,9 +4,126 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WordMark Options</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 24px;
+        background: #f7f7f8;
+        color: #141312;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 12px;
+      }
+      h2 {
+        font-size: 16px;
+        margin: 0 0 10px;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        max-width: 720px;
+      }
+      .muted {
+        color: #555;
+        font-size: 13px;
+        line-height: 1.45;
+        margin: 0 0 14px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: 10px 0;
+      }
+      label {
+        font-size: 13px;
+      }
+      input[type="password"],
+      select {
+        font-size: 13px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      button {
+        font-size: 13px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: #f9fafb;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #111827;
+        color: #ffffff;
+        border-color: #111827;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #374151;
+      }
+      .note {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #6b7280;
+      }
+    </style>
   </head>
   <body>
-    <main id="app">WordMark Options</main>
+    <main id="app">
+      <h1>WordMark Options</h1>
+
+      <section class="card">
+        <h2>Translation (Chinese)</h2>
+        <p class="muted">
+          Translation is optional and <strong>disabled by default</strong>. When enabled, WordMark will only make a
+          network request after you explicitly click <strong>Translate</strong> in the lookup overlay. The request
+          sends only the looked-up word and (if present) the definition text.
+        </p>
+
+        <div class="field">
+          <label>
+            <input type="checkbox" id="translation-enabled" />
+            Enable translation (opt-in)
+          </label>
+        </div>
+
+        <div class="field">
+          <label for="translation-provider">Provider</label>
+          <select id="translation-provider">
+            <option value="gemini">Gemini</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="translation-api-key">API key</label>
+          <input
+            id="translation-api-key"
+            type="password"
+            autocomplete="off"
+            placeholder="Enter API key (stored locally)"
+          />
+        </div>
+
+        <div class="row">
+          <button class="primary" type="button" id="translation-save">Save API key</button>
+          <button type="button" id="translation-clear">Clear API key</button>
+        </div>
+
+        <div id="translation-status" class="status" role="status" aria-live="polite"></div>
+        <div class="note">API key is stored locally and never displayed back in full.</div>
+      </section>
+    </main>
     <script src="options.js"></script>
   </body>
 </html>

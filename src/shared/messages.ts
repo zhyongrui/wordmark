@@ -4,7 +4,10 @@ export const MessageTypes = {
   ListWords: "words:list",
   DeleteWord: "words:delete",
   GetHighlightPreference: "preferences:highlight:get",
-  SetHighlightPreference: "preferences:highlight:set"
+  SetHighlightPreference: "preferences:highlight:set",
+  TranslationRequest: "translation:request",
+  TranslationGetSettings: "translation:settings:get",
+  TranslationSetSettings: "translation:settings:set"
 } as const;
 
 export type MessageType = (typeof MessageTypes)[keyof typeof MessageTypes];

@@ -8,13 +8,19 @@ import {
   isOverlayOpen,
   overlayContainsTarget,
   setOverlayHideListener,
+  setTranslateAvailable,
   shouldIgnoreAutoClose,
+  showTranslationError,
+  showTranslationLoading,
   showLookupOverlay,
+  showTranslationResult,
   showNotice
 } from "./lookup-overlay";
 import { canPronounce, playPronunciation } from "./pronounce";
 import { createHighlightEngine } from "./highlight";
 import type { Preferences, WordEntry } from "../shared/storage/schema";
+import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/translation/settings";
+import type { TranslationResponse } from "../shared/translation/types";
 
 type LookupResponse =
   | { ok: true; entry: { displayWord: string; definition: string | null; pronunciationAvailable: boolean } }
@@ -31,6 +37,11 @@ type PreferencesResponse =
 const STORAGE_KEY = "wordmark:storage";
 const highlightEngine = createHighlightEngine();
 let highlightEnabled = true;
+let lookupSessionId = 0;
+let translationEnabled = false;
+let latestLookup:
+  | { sessionId: number; word: string; definition: string | null }
+  | null = null;
 
 const sendMessage = async <T>(message: unknown): Promise<T | null> => {
   if (!chrome?.runtime?.sendMessage) {
@@ -52,6 +63,7 @@ const sendMessage = async <T>(message: unknown): Promise<T | null> => {
 };
 
 const triggerLookup = async () => {
+  const translationSettingsPromise = readTranslationSettings().catch(() => ({ enabled: false, providerId: "gemini" }));
   const selection = window.getSelection()?.toString() ?? "";
   const anchorRect = captureSelectionRect() ?? getCachedSelectionRect();
   const response = await sendMessage<LookupResponse>({
@@ -69,6 +81,8 @@ const triggerLookup = async () => {
   }
 
   const entry = response.entry;
+  lookupSessionId += 1;
+  const sessionId = lookupSessionId;
   ensureOverlayAutoClose();
   showLookupOverlay({
     word: entry.displayWord,
@@ -82,6 +96,81 @@ const triggerLookup = async () => {
       }
     }
   });
+
+  const settings = await translationSettingsPromise;
+  latestLookup = { sessionId, word: entry.displayWord, definition: entry.definition };
+  translationEnabled = Boolean(settings.enabled);
+  applyTranslateAvailability();
+};
+
+const requestTranslation = async (sessionId: number, word: string, definition: string | null) => {
+  if (sessionId !== lookupSessionId) {
+    return;
+  }
+  if (!translationEnabled) {
+    return;
+  }
+
+  bumpAutoCloseIgnore(250);
+  showTranslationLoading();
+
+  const response = await sendMessage<TranslationResponse>({
+    type: MessageTypes.TranslationRequest,
+    payload: {
+      word,
+      definition,
+      targetLang: "zh"
+    }
+  });
+
+  if (sessionId !== lookupSessionId) {
+    return;
+  }
+  if (!translationEnabled) {
+    return;
+  }
+
+  if (!response) {
+    showTranslationError("Translation unavailable. Reload the extension and try again.");
+    return;
+  }
+
+  if (response.ok) {
+    showTranslationResult({
+      translatedWord: response.translatedWord,
+      translatedDefinition: response.translatedDefinition ?? null
+    });
+    return;
+  }
+
+  if (response.error === "not_configured") {
+    showTranslationError("Translation not configured. Set an API key in Options.");
+    return;
+  }
+
+  showTranslationError(response.message ?? "Translation unavailable.");
+};
+
+const applyTranslateAvailability = () => {
+  const lookup = latestLookup;
+  if (!isOverlayOpen() || !lookup || lookup.sessionId !== lookupSessionId) {
+    return;
+  }
+
+  if (!translationEnabled) {
+    setTranslateAvailable(null);
+    return;
+  }
+
+  setTranslateAvailable(() => {
+    void requestTranslation(lookup.sessionId, lookup.word, lookup.definition);
+  });
+};
+
+const syncTranslationEnabledState = async () => {
+  const settings = await readTranslationSettings();
+  translationEnabled = Boolean(settings.enabled);
+  applyTranslateAvailability();
 };
 
 const fetchWords = async (): Promise<WordEntry[]> => {
@@ -196,16 +285,24 @@ const removeLegacyHighlightToggle = () => {
 };
 
 const initializeContent = () => {
-  setOverlayHideListener(removeOverlayAutoClose);
+  setOverlayHideListener(() => {
+    latestLookup = null;
+    removeOverlayAutoClose();
+  });
   removeLegacyHighlightToggle();
   installSelectionRectTracking();
   void syncHighlightState();
   if (chrome?.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== "local" || !changes[STORAGE_KEY]) {
+      if (areaName !== "local") {
         return;
       }
-      void syncHighlightState();
+      if (changes[STORAGE_KEY]) {
+        void syncHighlightState();
+      }
+      if (changes[TRANSLATION_SETTINGS_KEY]) {
+        void syncTranslationEnabledState();
+      }
     });
   }
   if (chrome?.runtime?.onMessage) {

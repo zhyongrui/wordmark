@@ -81,3 +81,41 @@
   font-size: 12px;
   color: #8a7e6d;
 }
+
+.wordmark-translation {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eee7dd;
+  background: #fbfdff;
+  border-radius: 8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-bottom: 8px;
+}
+
+.wordmark-translation-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: #2a4f6e;
+  margin-bottom: 6px;
+}
+
+.wordmark-translation-label {
+  font-size: 11px;
+  color: #6a7a88;
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wordmark-translation-value {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #141312;
+}
+
+.wordmark-translation-status {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6a7a88;
+}

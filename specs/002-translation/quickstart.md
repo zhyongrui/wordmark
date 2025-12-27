@@ -52,3 +52,16 @@ Precondition: perform a normal lookup so the in-page lookup overlay is visible.
    - Disconnect network (airplane mode).
    - Click **Translate**.
    - Expected: a clear “unavailable/offline” state; Spec 001 lookup/highlight/popup remain usable.
+3. Quota exceeded / rate-limited:
+   - Use a provider account/key that is out of quota or temporarily rate-limited.
+   - Click **Translate**.
+   - Expected: a clear “quota exceeded/unavailable” state; no crashes; no background retry loops; Spec 001 remains usable.
+4. Timeout (slow network):
+   - Throttle network (e.g., DevTools → Network → Slow 3G) so translation cannot complete promptly.
+   - Click **Translate**.
+   - Expected: a clear “timeout/unavailable” state; no crashes; retry only happens if the user clicks again.
+
+## Validation Record
+
+- 2025-12-26: `npm test` ✅, `npm run lint` ✅, `npm run typecheck` ✅, `npm run build` ✅
+- Manual (required): run `tests/integration/extension-flows/smoke-test.md` with translation disabled to confirm Spec 001 behavior is unchanged and no translation networking occurs by default.

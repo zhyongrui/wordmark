@@ -1,5 +1,6 @@
 import { MessageTypes } from "../shared/messages";
 import { handleLookupRequest, type LookupRequestPayload } from "./handlers/lookup";
+import { handleTranslationRequest, type TranslationRequestPayload } from "./handlers/translation";
 import { handleDeleteWord, handleListWords, type DeleteWordPayload } from "./handlers/words";
 import {
   handleGetHighlightPreference,
@@ -90,6 +91,9 @@ const initializeBackground = () => {
           return true;
         case MessageTypes.SetHighlightPreference:
           handleSetHighlightPreference(payload as SetHighlightPreferencePayload).then(sendResponse);
+          return true;
+        case MessageTypes.TranslationRequest:
+          handleTranslationRequest(payload as TranslationRequestPayload).then(sendResponse);
           return true;
         default:
           return;
