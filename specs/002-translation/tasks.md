@@ -203,6 +203,58 @@ immediately removes translation entry points and in-flight requests do not break
 
 ---
 
+## Phase 5: Spec Update 2025-12-27 — Shortcut Auto-Translate + Overlay Layout (US1)
+
+**Purpose**: Apply the clarified Spec 002 interaction update without affecting Spec 001 behavior when
+translation is disabled: remove Translate button, auto-translate on shortcut-triggered overlay open,
+reorder overlay information architecture, add TTL caching, and update smoke steps.
+
+### Tests (write first; must fail before implementation) ⚠️
+
+- [x] T029 [P] Add in-memory TTL cache + “do not cache failures” unit tests in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/tests/unit/translation/cache.test.ts; AC: tests assert
+  (a) successful responses are cached by key `(providerId, targetLang, word, definition)` for ~10–30m,
+  (b) cache is in-memory only, (c) error responses are NOT cached, and (d) when cached, provider `fetch`
+  is not called again; tests FAIL before implementation.
+- [x] T030 [P] [US1] Add “shortcut-triggered auto-translate” unit tests in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/tests/unit/content/auto-translate.test.ts; AC: tests assert
+  (a) on `LookupTrigger` successful lookup shows overlay immediately, (b) when translation enabled, content
+  sends `MessageTypes.TranslationRequest` automatically (no Translate click), (c) when translation disabled,
+  no translation request is sent and overlay layout matches Spec 001; tests FAIL before implementation.
+- [x] T031 [P] [US1] Add overlay field-mapping unit tests for the new info architecture in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/tests/unit/content/lookup-overlay-mapping.test.ts; AC: tests
+  cover (a) Chinese word translation shown under title, (b) English definition shown in lower block,
+  (c) Chinese translation of English definition appended under it, (d) definition missing → show
+  “Definition unavailable.” and omit definition-translation, (e) translation failure → short error +
+  “press shortcut again to retry”; tests FAIL before implementation.
+
+### Implementation
+
+- [x] T032 Implement in-memory TTL cache in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/shared/translation/cache.ts and wire it into
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/background/handlers/translation.ts; AC: T029 passes; cache
+  is never persisted; disabled/no-key/offline/quota/timeout behavior remains safe and unchanged.
+- [x] T033 [US1] Remove Translate button and click-based translation flow in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/content/lookup-overlay.ts and
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/content/lookup-overlay.css; AC: when translation disabled,
+  overlay DOM/layout matches Spec 001; when enabled, overlay supports new sections/states needed by T031.
+- [x] T034 [US1] Implement “shortcut-triggered auto-translate” wiring in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/src/content/index.ts; AC: on lookup via shortcut, overlay renders
+  base word/definition immediately, then (if enabled) triggers translation async and renders loading/success/error;
+  failure shows retry hint (“press shortcut again to retry”); no translation network calls when disabled.
+
+### Polish
+
+- [x] T035 [P] Update Spec 002 smoke/manual steps in
+  /Users/zhaoyongrui/Desktop/Code/wordmark/specs/002-translation/quickstart.md; AC: steps reflect
+  (a) no Translate button, (b) auto-translation on shortcut, (c) retry via shortcut, (d) TTL caching expectation,
+  and (e) Spec 001 regression verification with translation disabled (no networking).
+
+**Checkpoint**: After T032–T035, run and fix until green:
+`npm test`, `npm run lint`, `npm run typecheck`, `npm run build`.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

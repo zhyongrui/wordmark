@@ -22,3 +22,31 @@ export const createInSessionDeduper = <T>() => {
   };
   return { dedupe, clear };
 };
+
+export const createInMemoryTtlCache = <T>(options: { ttlMs: number; now?: () => number }) => {
+  const now = options.now ?? (() => Date.now());
+  const ttlMs = options.ttlMs;
+  const entries = new Map<string, { value: T; expiresAt: number }>();
+
+  const get = (key: string): T | null => {
+    const entry = entries.get(key);
+    if (!entry) {
+      return null;
+    }
+    if (entry.expiresAt <= now()) {
+      entries.delete(key);
+      return null;
+    }
+    return entry.value;
+  };
+
+  const set = (key: string, value: T) => {
+    entries.set(key, { value, expiresAt: now() + ttlMs });
+  };
+
+  const clear = () => {
+    entries.clear();
+  };
+
+  return { get, set, clear };
+};

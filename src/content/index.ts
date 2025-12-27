@@ -8,8 +8,8 @@ import {
   isOverlayOpen,
   overlayContainsTarget,
   setOverlayHideListener,
-  setTranslateAvailable,
   shouldIgnoreAutoClose,
+  resetTranslationUi,
   showTranslationError,
   showTranslationLoading,
   showLookupOverlay,
@@ -100,7 +100,9 @@ const triggerLookup = async () => {
   const settings = await translationSettingsPromise;
   latestLookup = { sessionId, word: entry.displayWord, definition: entry.definition };
   translationEnabled = Boolean(settings.enabled);
-  applyTranslateAvailability();
+  if (translationEnabled) {
+    void requestTranslation(sessionId, entry.displayWord, entry.definition);
+  }
 };
 
 const requestTranslation = async (sessionId: number, word: string, definition: string | null) => {
@@ -151,26 +153,13 @@ const requestTranslation = async (sessionId: number, word: string, definition: s
   showTranslationError(response.message ?? "Translation unavailable.");
 };
 
-const applyTranslateAvailability = () => {
-  const lookup = latestLookup;
-  if (!isOverlayOpen() || !lookup || lookup.sessionId !== lookupSessionId) {
-    return;
-  }
-
-  if (!translationEnabled) {
-    setTranslateAvailable(null);
-    return;
-  }
-
-  setTranslateAvailable(() => {
-    void requestTranslation(lookup.sessionId, lookup.word, lookup.definition);
-  });
-};
-
 const syncTranslationEnabledState = async () => {
   const settings = await readTranslationSettings();
   translationEnabled = Boolean(settings.enabled);
-  applyTranslateAvailability();
+  const lookup = latestLookup;
+  if (!translationEnabled && lookup && lookup.sessionId === lookupSessionId && isOverlayOpen()) {
+    resetTranslationUi(lookup.definition);
+  }
 };
 
 const fetchWords = async (): Promise<WordEntry[]> => {

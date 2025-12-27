@@ -2,6 +2,13 @@
 
 This quickstart validates Spec 002 translation features without changing Spec 001 behaviors.
 
+## Spec 002 验收入口 (Shortcut auto-translate)
+
+1. 先完成一次正常查词（或直接选中单词后按快捷键触发查词）
+2. 在 Options 中开启 Translation，并配置 API key
+3. 回到网页，选中一个英文单词，按 WordMark 快捷键打开浮窗
+4. 预期：浮窗立即显示查词结果，并自动触发翻译（无需点击 Translate；按钮已移除）
+
 ## Build & Load (same as Spec 001)
 
 1. `npm install`
@@ -32,14 +39,17 @@ For Spec 001 regression coverage, run:
 
 ## On-demand Translation (lookup overlay)
 
-Precondition: perform a normal lookup so the in-page lookup overlay is visible.
+Precondition: use the existing WordMark shortcut to open the in-page lookup overlay for a selected word.
 
-1. In the lookup overlay, click **Translate** (explicit user action).
+1. With translation enabled, press the shortcut to open the lookup overlay.
 2. Expected:
    - Base lookup result remains visible immediately (translation does not block the overlay).
    - A loading state is shown, then Chinese translations appear for:
      - the English word
      - the English definition text (if present)
+   - UI layout (when translation is enabled):
+     - Under the word title: Chinese translation (word)
+     - In the lower section: English definition (dictionary) + Chinese translation of that definition (if present)
    - Translated content is clearly labeled and visually distinct.
 
 ## Safe Degradation (no crash, no retries)
@@ -58,10 +68,17 @@ Precondition: perform a normal lookup so the in-page lookup overlay is visible.
    - Expected: a clear “quota exceeded/unavailable” state; no crashes; no background retry loops; Spec 001 remains usable.
 4. Timeout (slow network):
    - Throttle network (e.g., DevTools → Network → Slow 3G) so translation cannot complete promptly.
-   - Click **Translate**.
-   - Expected: a clear “timeout/unavailable” state; no crashes; retry only happens if the user clicks again.
+   - Press the shortcut to open the overlay.
+   - Expected: a clear “timeout/unavailable” state; no crashes; retry only happens if the user presses the shortcut again.
+
+## Retry & Cache Expectations (MVP)
+
+- Retry: On translation failures, the overlay shows a short error with a hint to “press the shortcut again to retry”.
+- Cache: Successful translations may be reused in-memory for a short TTL (no disk persistence). Repeating the same lookup
+  shortly may not trigger another provider request; after the TTL expires, a new request may be sent.
 
 ## Validation Record
 
 - 2025-12-26: `npm test` ✅, `npm run lint` ✅, `npm run typecheck` ✅, `npm run build` ✅
+- 2025-12-27: `npm test` ✅, `npm run build` ✅ (Spec 002 auto-translate + overlay layout update)
 - Manual (required): run `tests/integration/extension-flows/smoke-test.md` with translation disabled to confirm Spec 001 behavior is unchanged and no translation networking occurs by default.

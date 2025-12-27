@@ -21,6 +21,14 @@ Spec 001 (WordMark MVP v0.1) is complete and frozen. Spec 002 is a strictly addi
 - Q: Cache policy and retention — no cache vs TTL vs until clear → A: No persistent cache in MVP (optional in-session de-dup only).
 - Q: API key configuration surface (options vs popup) and storage location within local extension storage → A: Options page only; stored locally under a dedicated key; never exposed to content scripts.
 
+### Session 2025-12-27
+
+- Q: When translation is enabled, should lookup automatically translate on every shortcut-triggered overlay open (no Translate button)? → A: Yes; opening the lookup overlay via the existing shortcut automatically triggers translation for the looked-up word and (if present) the English definition. Remove the Translate button.
+- Q: Should the UI/layout changes apply when translation is disabled? → A: No; when translation is disabled, the lookup overlay UI/behavior remains identical to Spec 001 (no layout changes and no translation networking).
+- Q: Cache strategy — none vs in-memory TTL vs persistent → A: In-memory TTL cache in the background for translation results keyed by (word, definition text, target language); TTL ~10–30 minutes; never persisted to disk.
+- Q: Failure retry behavior when translation fails (Translate button removed) → A: No automatic retries; show a short error + “press the shortcut again to retry”.
+- Q: If the English definition is unavailable, should translation still be attempted? → A: Yes; attempt word translation; keep “Definition unavailable.” for the English definition, and omit the definition-translation block.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - On-demand Chinese translation for word + definition (Priority: P1)
@@ -40,12 +48,14 @@ disable translation to revert to pure Spec 001 behavior.
 
 1. **Given** translation is disabled, **When** the user performs Spec 001 flows (lookup/highlight/popup),
    **Then** behavior remains unchanged and no translation network activity occurs.
-2. **Given** translation is enabled and the user is viewing a looked-up word with an English definition,
-   **When** they explicitly request translation, **Then** the system fetches and displays Chinese
-   translations for (a) the word and (b) the definition text, clearly labeled and visually distinct.
+2. **Given** translation is enabled and configured, **When** the user opens the lookup overlay via the
+   existing WordMark shortcut for a looked-up word (with an English definition when available),
+   **Then** the system automatically fetches and displays Chinese translations for (a) the word and (b)
+   the definition text (if present), clearly labeled and visually distinct, without requiring a Translate click.
 3. **Given** translation is enabled but the device is offline or a quota limit is hit, **When** the user
-   requests translation, **Then** the request fails gracefully with a clear “unavailable” state and the
-   original lookup/highlight/popup behaviors remain fully usable.
+   opens the lookup overlay via the shortcut, **Then** the translation attempt fails gracefully with a
+   clear “unavailable” state (and a retry hint) and the original lookup/highlight/popup behaviors remain
+   fully usable.
 4. **Given** a translation request is in progress, **When** the user continues interacting with the page,
    **Then** the UI remains responsive and the base lookup UI is not blocked.
 
@@ -84,22 +94,31 @@ that disabling translation stops network usage immediately.
 - **FR-001**: System MUST provide a global enable/disable control for translation.
 - **FR-002**: When translation is disabled, the system MUST NOT perform any translation network requests
   and MUST preserve Spec 001 behaviors unchanged.
-- **FR-003**: System MUST allow users to explicitly request Chinese translation for a looked-up word.
-- **FR-004**: If an English definition is present for the looked-up word, the system MUST allow users to
-  explicitly request Chinese translation for that definition text.
+- **FR-003**: When translation is enabled, the system MUST automatically attempt Chinese translation for
+  the looked-up word when the lookup overlay is opened via the existing WordMark shortcut (no Translate
+  button).
+- **FR-004**: If an English definition is present for the looked-up word, the system MUST automatically
+  attempt Chinese translation for that definition text as part of the same shortcut-triggered flow.
 - **FR-005**: Translation MUST be user-triggered only (no automatic background translation of pages or
-  the full word list).
+  the full word list). The only trigger in MVP is opening the lookup overlay via the shortcut (after a
+  lookup action), with translation enabled.
 - **FR-006**: Translation requests MUST be scoped to the minimal data required (word and/or definition
   text only) and MUST NOT include surrounding page context or full-page content.
 - **FR-007**: The translation provider MUST be pluggable (provider choice and credentials are configured
   by the user).
 - **FR-008**: Translated content MUST be clearly labeled and visually distinct from the original text.
-  Display surface MUST be the lookup overlay shown for Spec 001 lookups (popup remains unchanged).
+  Display surface MUST be the lookup overlay shown for Spec 001 lookups (popup remains unchanged). When
+  enabled, the overlay MUST show (a) the Chinese translation under the word title, and (b) an “English
+  definition” section that shows the dictionary definition (or “Definition unavailable.”), followed by
+  (c) the Chinese translation of that English definition when available.
 - **FR-009**: Translation failures (offline/quota/timeouts/provider errors) MUST be handled gracefully:
-  show a clear failure/unavailable state and MUST NOT break lookup, highlight, or popup behaviors.
+  show a clear failure/unavailable state with a short retry hint (“press the shortcut again to retry”)
+  and MUST NOT break lookup, highlight, or popup behaviors. The system MUST NOT auto-retry in the
+  background.
 - **FR-010**: Translation results MAY be cached to reduce repeated requests, but caching behavior MUST be
   explicit and privacy-preserving. MVP MUST NOT persist translation results (no on-disk cache). The
-  system MAY de-duplicate repeated translation requests within a single open overlay session.
+  system SHOULD cache translation results in memory with a short TTL (e.g., 10–30 minutes) to reduce
+  repeated requests.
 - **FR-011**: The system MUST provide a safe API key configuration flow and local storage handling for
   credentials. API key configuration MUST be provided in the extension Options page, stored locally
   under a dedicated key separate from Spec 001 word data, and MUST NOT be exposed to content scripts.
@@ -129,7 +148,7 @@ that disabling translation stops network usage immediately.
 
 - **TranslationPreference**: Global translation enabled flag (default disabled) and provider selection.
 - **TranslationCredential**: Provider credential material (e.g., API key) stored locally and manageable by user.
-- **TranslationCacheEntry**: Optional cached translation for (word, definition text) with metadata (timestamp/expiry).
+- **TranslationCacheEntry**: In-memory cached translation for (word, definition text, target language) with metadata (timestamp/expiry/TTL).
 
 ## Out of Scope (Spec 002 MVP)
 
@@ -157,7 +176,8 @@ that disabling translation stops network usage immediately.
 - **SC-001**: With translation disabled (default), Spec 001 smoke tests pass unchanged and no translation
   network requests occur.
 - **SC-002**: With translation enabled and configured, users can successfully obtain labeled Chinese
-  translations for the word and (when present) the definition text in typical conditions.
+  translations for the word and (when present) the definition text in typical conditions when opening
+  the lookup overlay via the shortcut (no Translate click).
 - **SC-003**: When offline/quota exceeded/timeout occurs, translation fails gracefully and Spec 001 lookup,
   highlight, and popup remain usable (no crashes, no broken UI).
 - **SC-004**: Translation requests do not block UI interactions (scrolling and selection remain responsive).

@@ -1,5 +1,10 @@
-import { createTranslationError, type TranslationRequest, type TranslationResponse } from "../../shared/translation/types";
-import { createInSessionDeduper } from "../../shared/translation/cache";
+import {
+  createTranslationError,
+  type TranslationRequest,
+  type TranslationResponse,
+  type TranslationSuccess
+} from "../../shared/translation/types";
+import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
 import { geminiProvider } from "../../shared/translation/providers/gemini";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
@@ -7,6 +12,7 @@ import { getTranslationApiKey } from "../../shared/translation/secrets";
 export type TranslationRequestPayload = TranslationRequest;
 
 const inSessionDeduper = createInSessionDeduper<TranslationResponse>();
+const translationResultCache = createInMemoryTtlCache<TranslationSuccess>({ ttlMs: 20 * 60 * 1000 });
 
 const getProvider = (providerId: string) => {
   switch (providerId) {
@@ -47,9 +53,22 @@ export const handleTranslationRequest = async (
   };
 
   const dedupeKey = makeDedupeKey(provider.id, request);
+  const cached = translationResultCache.get(dedupeKey);
+  if (cached) {
+    return cached;
+  }
   return await inSessionDeduper.dedupe(dedupeKey, async () => {
+    const cachedAgain = translationResultCache.get(dedupeKey);
+    if (cachedAgain) {
+      return cachedAgain;
+    }
+
     try {
-      return await provider.translate(request, apiKey);
+      const response = await provider.translate(request, apiKey);
+      if (response.ok) {
+        translationResultCache.set(dedupeKey, response);
+      }
+      return response;
     } catch {
       return createTranslationError("provider_error");
     }

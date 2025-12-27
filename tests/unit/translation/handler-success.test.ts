@@ -58,7 +58,7 @@ describe("background translation handler success/degrade", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await handleTranslationRequest({
-      word: "hello",
+      word: "hello-word-only",
       definition: null,
       targetLang: "zh"
     });
@@ -76,8 +76,8 @@ describe("background translation handler success/degrade", () => {
     const fetchMock = vi.fn(async () => makeGeminiResponse({ translatedWord: "你好" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const first = handleTranslationRequest({ word: "hello", definition: null, targetLang: "zh" });
-    const second = handleTranslationRequest({ word: "hello", definition: null, targetLang: "zh" });
+    const first = handleTranslationRequest({ word: "hello-dedupe", definition: null, targetLang: "zh" });
+    const second = handleTranslationRequest({ word: "hello-dedupe", definition: null, targetLang: "zh" });
 
     await expect(first).resolves.toMatchObject({ ok: true });
     await expect(second).resolves.toMatchObject({ ok: true });
@@ -92,7 +92,7 @@ describe("background translation handler success/degrade", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await handleTranslationRequest({
-      word: "hello",
+      word: "hello-error",
       definition: null,
       targetLang: "zh"
     });
@@ -103,4 +103,3 @@ describe("background translation handler success/degrade", () => {
     }
   });
 });
-

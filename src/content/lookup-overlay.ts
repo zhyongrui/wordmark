@@ -4,7 +4,6 @@ type OverlayContent = {
   pronunciationAvailable: boolean;
   status?: string;
   onPronounce?: () => void;
-  onTranslate?: () => void;
   anchorRect?: AnchorRect | null;
 };
 
@@ -431,14 +430,7 @@ const createOverlay = () => {
   pronounce.type = "button";
   pronounce.textContent = "Play pronunciation";
 
-  const translate = document.createElement("button");
-  translate.className = "wordmark-button wordmark-button--translate";
-  translate.type = "button";
-  translate.textContent = "Translate";
-  translate.hidden = true;
-
   actions.appendChild(pronounce);
-  actions.appendChild(translate);
 
   const translation = document.createElement("div");
   translation.className = "wordmark-translation";
@@ -446,11 +438,11 @@ const createOverlay = () => {
 
   const translationTitle = document.createElement("div");
   translationTitle.className = "wordmark-translation-title";
-  translationTitle.textContent = "Chinese translation";
+  translationTitle.textContent = "English definition";
 
   const translationWordLabel = document.createElement("div");
   translationWordLabel.className = "wordmark-translation-label wordmark-translation-word-label";
-  translationWordLabel.textContent = "Word (ZH)";
+  translationWordLabel.textContent = "Definition (EN)";
 
   const translationWord = document.createElement("div");
   translationWord.className = "wordmark-translation-value wordmark-translation-word";
@@ -489,8 +481,8 @@ const createOverlay = () => {
     word,
     definition,
     pronounce,
-    translate,
     translation,
+    translationTitle,
     translationWordLabel,
     translationWord,
     translationDefinitionLabel,
@@ -515,35 +507,24 @@ const getExistingOverlay = (): OverlayElements | null => {
     return null;
   }
 
+  const actions = existing.querySelector(".wordmark-actions") as HTMLDivElement | null;
+
   const pronounceButtons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-button--pronounce");
-  const pronounce =
-    pronounceButtons[0] ??
-    (existing.querySelector(".wordmark-button") as HTMLButtonElement | null) ??
-    document.createElement("button");
+  const pronounce = pronounceButtons[0] ?? document.createElement("button");
   pronounceButtons.forEach((button, index) => {
     if (index > 0) {
       button.remove();
     }
   });
   pronounce.classList.add("wordmark-button", "wordmark-button--pronounce");
+  if (!pronounceButtons[0]) {
+    pronounce.type = "button";
+    pronounce.textContent = "Play pronunciation";
+    actions?.appendChild(pronounce);
+  }
 
   const translateButtons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-button--translate");
-  let translate = translateButtons[0] ?? null;
-  translateButtons.forEach((button, index) => {
-    if (index > 0) {
-      button.remove();
-    }
-  });
-
-  const actions = existing.querySelector(".wordmark-actions") as HTMLDivElement | null;
-  if (!translate) {
-    translate = document.createElement("button");
-    translate.className = "wordmark-button wordmark-button--translate";
-    translate.type = "button";
-    translate.textContent = "Translate";
-    translate.hidden = true;
-    actions?.appendChild(translate);
-  }
+  translateButtons.forEach((button) => button.remove());
 
   let translation = existing.querySelector(".wordmark-translation") as HTMLDivElement | null;
   if (!translation) {
@@ -566,15 +547,14 @@ const getExistingOverlay = (): OverlayElements | null => {
   const translationTitle = ensureChild(".wordmark-translation-title", () => {
     const element = document.createElement("div");
     element.className = "wordmark-translation-title";
-    element.textContent = "Chinese translation";
+    element.textContent = "English definition";
     return element;
   });
-  void translationTitle;
 
   const translationWordLabel = ensureChild(".wordmark-translation-word-label", () => {
     const element = document.createElement("div");
     element.className = "wordmark-translation-label wordmark-translation-word-label";
-    element.textContent = "Word (ZH)";
+    element.textContent = "Definition (EN)";
     return element;
   });
 
@@ -608,8 +588,8 @@ const getExistingOverlay = (): OverlayElements | null => {
     word: existing.querySelector(".wordmark-word") as HTMLDivElement,
     definition: existing.querySelector(".wordmark-definition") as HTMLDivElement,
     pronounce,
-    translate,
     translation,
+    translationTitle,
     translationWordLabel,
     translationWord,
     translationDefinitionLabel,
@@ -620,22 +600,24 @@ const getExistingOverlay = (): OverlayElements | null => {
   return cachedOverlay;
 };
 
-export const setTranslateAvailable = (onTranslate: (() => void) | null) => {
+const normalizeEnglishDefinition = (definition: string | null): string => {
+  const value = typeof definition === "string" ? definition.trim() : "";
+  return value ? value : "Definition unavailable.";
+};
+
+export const resetTranslationUi = (englishDefinition: string | null) => {
   const overlay = getExistingOverlay();
   if (!overlay) {
     return;
   }
 
-  overlay.translate.hidden = !onTranslate;
-  overlay.translate.disabled = false;
-  overlay.translate.onclick = onTranslate ?? null;
-
-  if (!onTranslate) {
-    overlay.translation.hidden = true;
-    overlay.translationWord.textContent = "";
-    overlay.translationDefinition.textContent = "";
-    overlay.translationStatus.textContent = "";
-  }
+  overlay.definition.textContent = normalizeEnglishDefinition(englishDefinition);
+  overlay.translation.hidden = true;
+  overlay.translationWord.textContent = "";
+  overlay.translationDefinitionLabel.style.display = "none";
+  overlay.translationDefinition.style.display = "none";
+  overlay.translationDefinition.textContent = "";
+  overlay.translationStatus.textContent = "";
 };
 
 export const showTranslationLoading = () => {
@@ -643,13 +625,65 @@ export const showTranslationLoading = () => {
   if (!overlay) {
     return;
   }
-  overlay.translate.disabled = true;
+
+  const englishDefinitionText = normalizeEnglishDefinition(overlay.definition.textContent);
+
   overlay.translation.hidden = false;
-  overlay.translationWord.textContent = "";
-  overlay.translationDefinitionLabel.style.display = "none";
-  overlay.translationDefinition.style.display = "none";
+  overlay.translationTitle.textContent = "English definition";
+  overlay.translationWordLabel.textContent = "Definition (EN)";
+  overlay.translationWord.textContent = englishDefinitionText;
+
+  overlay.definition.textContent = "Translating…";
+
+  const showDefinitionTranslation = englishDefinitionText !== "Definition unavailable.";
+  overlay.translationDefinitionLabel.style.display = showDefinitionTranslation ? "block" : "none";
+  overlay.translationDefinition.style.display = showDefinitionTranslation ? "block" : "none";
   overlay.translationDefinition.textContent = "";
-  overlay.translationStatus.textContent = "Translating…";
+  overlay.translationStatus.textContent = "";
+};
+
+export type TranslationOverlayModel = {
+  topText: string;
+  englishDefinitionText: string;
+  definitionZhText: string | null;
+};
+
+export const mapTranslationOverlayModel = (input: {
+  englishDefinition: string | null;
+  translation: import("../shared/translation/types").TranslationResponse;
+}): TranslationOverlayModel => {
+  const englishDefinitionText = normalizeEnglishDefinition(input.englishDefinition);
+  const translation = input.translation;
+
+  if (translation.ok) {
+    const word = translation.translatedWord.trim();
+    const translatedDefinition =
+      englishDefinitionText !== "Definition unavailable." && typeof translation.translatedDefinition === "string"
+        ? translation.translatedDefinition.trim()
+        : "";
+
+    return {
+      topText: word || "Translation unavailable.",
+      englishDefinitionText,
+      definitionZhText: translatedDefinition ? translatedDefinition : null
+    };
+  }
+
+  if (translation.error === "not_configured") {
+    return {
+      topText: "Translation not configured. Set an API key in Options.",
+      englishDefinitionText,
+      definitionZhText: null
+    };
+  }
+
+  const base = typeof translation.message === "string" && translation.message.trim() ? translation.message.trim() : "";
+  const message = base || "Translation unavailable.";
+  return {
+    topText: `${message} Press the shortcut again to retry.`,
+    englishDefinitionText,
+    definitionZhText: null
+  };
 };
 
 export const showTranslationResult = (result: { translatedWord: string; translatedDefinition?: string | null }) => {
@@ -658,21 +692,32 @@ export const showTranslationResult = (result: { translatedWord: string; translat
     return;
   }
 
-  overlay.translate.disabled = false;
   overlay.translation.hidden = false;
-  overlay.translationStatus.textContent = "";
-  overlay.translationWord.textContent = result.translatedWord;
+  overlay.translationTitle.textContent = "English definition";
 
-  const definition = typeof result.translatedDefinition === "string" ? result.translatedDefinition : null;
-  if (definition && definition.trim()) {
+  const model = mapTranslationOverlayModel({
+    englishDefinition: overlay.translationWord.textContent,
+    translation: {
+      ok: true,
+      translatedWord: result.translatedWord,
+      translatedDefinition: typeof result.translatedDefinition === "string" ? result.translatedDefinition : null
+    }
+  });
+
+  overlay.definition.textContent = model.topText;
+  overlay.translationWordLabel.textContent = "Definition (EN)";
+  overlay.translationWord.textContent = model.englishDefinitionText;
+
+  if (model.definitionZhText) {
     overlay.translationDefinitionLabel.style.display = "block";
     overlay.translationDefinition.style.display = "block";
-    overlay.translationDefinition.textContent = definition;
+    overlay.translationDefinition.textContent = model.definitionZhText;
   } else {
     overlay.translationDefinitionLabel.style.display = "none";
     overlay.translationDefinition.style.display = "none";
     overlay.translationDefinition.textContent = "";
   }
+  overlay.translationStatus.textContent = "";
 };
 
 export const showTranslationError = (message: string) => {
@@ -681,13 +726,20 @@ export const showTranslationError = (message: string) => {
     return;
   }
 
-  overlay.translate.disabled = false;
   overlay.translation.hidden = false;
-  overlay.translationWord.textContent = "";
+  overlay.translationTitle.textContent = "English definition";
+
+  const englishDefinitionText = normalizeEnglishDefinition(overlay.translationWord.textContent);
+  overlay.translationWordLabel.textContent = "Definition (EN)";
+  overlay.translationWord.textContent = englishDefinitionText;
+
+  const trimmed = message.trim();
+  const includeRetryHint = !/not configured/i.test(trimmed) && !/shortcut again to retry/i.test(trimmed);
+  overlay.definition.textContent = includeRetryHint ? `${trimmed} Press the shortcut again to retry.` : trimmed;
   overlay.translationDefinitionLabel.style.display = "none";
   overlay.translationDefinition.style.display = "none";
   overlay.translationDefinition.textContent = "";
-  overlay.translationStatus.textContent = message;
+  overlay.translationStatus.textContent = "";
 };
 
 const getOverlay = (): OverlayElements => getExistingOverlay() ?? (cachedOverlay = createOverlay());
@@ -729,10 +781,9 @@ export const showLookupOverlay = (content: OverlayContent) => {
   overlay.pronounce.disabled = !content.pronunciationAvailable;
   overlay.pronounce.style.display = content.pronunciationAvailable ? "inline-flex" : "none";
   overlay.pronounce.onclick = content.onPronounce ?? null;
-  overlay.translate.hidden = !content.onTranslate;
-  overlay.translate.disabled = false;
-  overlay.translate.onclick = content.onTranslate ?? null;
   overlay.translation.hidden = true;
+  overlay.translationTitle.textContent = "English definition";
+  overlay.translationWordLabel.textContent = "Definition (EN)";
   overlay.translationWord.textContent = "";
   overlay.translationDefinition.textContent = "";
   overlay.translationStatus.textContent = "";
