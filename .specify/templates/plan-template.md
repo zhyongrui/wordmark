@@ -31,19 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [ ] Scope: feature supports reading-time vocabulary marking/memory; not a full dictionary
-- [ ] Privacy: store only in `chrome.storage.local`; no network/analytics by default; if optional
-      network is introduced, require explicit opt-in + data minimization + API key handling +
-      offline/quota fallback; sync opt-in
-- [ ] UX: hotkey lookup fast and non-blocking; def/pronunciation UI non-obstructive; highlight
-      low-interference with one-click disable
-- [ ] Performance: incremental highlight (MutationObserver + throttling); no main-thread blocking;
-      no full scan on huge pages; ignore input/textarea/script/style
-- [ ] Security: no untrusted HTML injection; isolated from page JS; least permissions
-- [ ] Engineering: TypeScript; modules split (background/content/popup/options); versioned data
-      schemas with migration
-- [ ] Testability: normalization/counting/sorting/import/export logic independently testable;
-      UI/data decoupled
+[Gates determined based on constitution file]
 
 ## Project Structure
 

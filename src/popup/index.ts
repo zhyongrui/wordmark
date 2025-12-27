@@ -40,9 +40,10 @@ const searchInput = document.getElementById("search-input") as HTMLInputElement 
 const listEl = document.getElementById("word-list") as HTMLDivElement | null;
 const emptyEl = document.getElementById("empty-state") as HTMLDivElement | null;
 const countEl = document.getElementById("word-count") as HTMLDivElement | null;
+const settingsButton = document.getElementById("settings-button") as HTMLButtonElement | null;
 const toggleButton = document.getElementById("highlight-toggle") as HTMLButtonElement | null;
 
-if (!app || !searchInput || !listEl || !emptyEl || !countEl || !toggleButton) {
+if (!app || !searchInput || !listEl || !emptyEl || !countEl || !toggleButton || !settingsButton) {
   throw new Error("Popup root elements missing.");
 }
 
@@ -76,7 +77,7 @@ const renderList = () => {
   const sorted = sortWordEntries(filtered);
 
   listEl.textContent = "";
-  countEl.textContent = words.length ? `${words.length} words` : "No words";
+  countEl.textContent = `${words.length} ${words.length === 1 ? "word" : "words"}`;
 
   if (sorted.length === 0) {
     const message = query.trim() ? "No matches found." : "No words yet.";
@@ -190,6 +191,29 @@ if (chrome?.storage?.onChanged) {
     void refreshPreferences();
   });
 }
+
+const openOptionsPage = async () => {
+  try {
+    if (chrome?.runtime?.openOptionsPage) {
+      await chrome.runtime.openOptionsPage();
+      return;
+    }
+  } catch {
+    // Fallback below
+  }
+
+  if (chrome?.tabs?.create && chrome?.runtime?.getURL) {
+    try {
+      await chrome.tabs.create({ url: chrome.runtime.getURL("options/options.html") });
+    } catch {
+      // Swallow errors to avoid breaking popup UX
+    }
+  }
+};
+
+settingsButton.addEventListener("click", () => {
+  void openOptionsPage();
+});
 
 void refreshWords();
 void refreshPreferences();

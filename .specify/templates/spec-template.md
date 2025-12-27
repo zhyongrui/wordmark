@@ -95,24 +95,6 @@
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
-### Constitution Constraints *(mandatory)*
-
-<!--
-  ACTION REQUIRED: Map the feature to the constitution. Every item must be addressed.
--->
-
-- **CC-001**: Feature MUST stay within reading-time vocabulary marking/memory scope
-- **CC-002**: Privacy default: store word data only in `chrome.storage.local`; no network/analytics
-  unless opt-in; if optional network is used, require explicit consent + data minimization + safe
-  API key handling + offline/quota fallback
-- **CC-003**: UX: hotkey lookup fast/non-blocking; definition/pronunciation UI non-obstructive;
-  highlight low-interference with one-click disable
-- **CC-004**: Performance: incremental highlight (MutationObserver + throttling); avoid main-thread
-  blocking; no full scan on huge pages; ignore input/textarea/script/style
-- **CC-005**: Security: no untrusted HTML injection; isolate content scripts; least permissions
-- **CC-006**: Engineering & tests: TypeScript, module boundaries, versioned data/migrations; core
-  word logic independently testable; UI/data decoupled
-
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]

@@ -78,6 +78,15 @@ Preparation: ensure at least 3 words have been looked up (e.g., `hello`, `world`
      - The entry is removed from the popup list.
      - If Highlights are ON, occurrences of that word stop being highlighted on the current page within ~2 seconds.
 
+## US4 — Popup settings entry + centered count (spec 004)
+
+1. Open the extension popup.
+   - Expected: Header shows a small settings icon on the top-right and the total word count is centered in the header (not right-aligned).
+2. Click the settings icon.
+   - Expected: The extension options/settings page opens (or focuses if already open) without popup console errors.
+3. Add or delete a word (use existing flows).
+   - Expected: The centered total updates to match the list count within the same popup session.
+
 ## Regression — Long page performance
 
 Use a “long page” (very long article, infinite-scroll page, or a docs page with lots of text).
