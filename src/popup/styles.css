@@ -20,9 +20,9 @@ body {
 }
 
 .wordmark-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -32,27 +32,29 @@ body {
 
 .wordmark-title {
   font-weight: 600;
-  justify-self: start;
+}
+
+.wordmark-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .wordmark-count {
-  justify-self: center;
-  text-align: center;
+  text-align: right;
 }
 
 .wordmark-settings {
-  justify-self: end;
-  width: 24px;
-  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #d0c5b6;
-  background: #f7f2e9;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 6px;
+  border: none;
+  background: transparent;
   color: #2b241d;
-  border-radius: 6px;
-  padding: 0;
-  font-size: 14px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
 }
@@ -60,6 +62,7 @@ body {
 .wordmark-settings:focus-visible {
   outline: 2px solid #c7b08a;
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .wordmark-search {

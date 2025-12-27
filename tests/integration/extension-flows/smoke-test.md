@@ -78,14 +78,14 @@ Preparation: ensure at least 3 words have been looked up (e.g., `hello`, `world`
      - The entry is removed from the popup list.
      - If Highlights are ON, occurrences of that word stop being highlighted on the current page within ~2 seconds.
 
-## US4 — Popup settings entry + centered count (spec 004)
+## US4 — Popup settings entry + gear/count alignment (spec 004)
 
 1. Open the extension popup.
-   - Expected: Header shows a small settings icon on the top-right and the total word count is centered in the header (not right-aligned).
-2. Click the settings icon.
-   - Expected: The extension options/settings page opens (or focuses if already open) without popup console errors.
+   - Expected: Header shows a borderless gear icon on the top-right with a visibly larger glyph (~18–22px) and at least 32×32 clickable area; the total word count is on the same row immediately to the left of the gear with ~6–10px spacing (not centered across the header).
+2. Click the gear.
+   - Expected: The extension options/settings page opens (or focuses if already open) without popup console errors (fallback allowed).
 3. Add or delete a word (use existing flows).
-   - Expected: The centered total updates to match the list count within the same popup session.
+   - Expected: The count beside the gear updates promptly to match the list; alignment with the gear remains intact.
 
 ## Regression — Long page performance
 

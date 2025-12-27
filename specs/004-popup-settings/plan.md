@@ -1,29 +1,29 @@
-# Implementation Plan: Popup Settings Entry and Centered Count
+# Implementation Plan: Popup Settings Entry and Centered Count (UI polish)
 
 **Branch**: `[004-popup-settings]` | **Date**: 2025-12-27 | **Spec**: specs/004-popup-settings/spec.md
 **Input**: Feature specification from `/specs/004-popup-settings/spec.md`
 
 ## Summary
 
-Add a settings icon to the popup header (top-right) that opens the extension options page, and center the total word count in the header while keeping existing popup behaviors intact. Use `chrome.runtime.openOptionsPage()` with a tabs fallback, adjust header layout and count rendering, and ensure highlight toggle, search, list rendering, and delete continue to work without console errors.
+Polish the popup header so the gear is a larger, borderless icon on the top-right with a minimum 32×32 clickable area, and the word-count label sits on the same row immediately to its left with 6–10px spacing. Keep all existing popup behaviors (search, list render, delete, highlight toggle, options opening) unchanged. Work is limited to popup DOM/CSS/script (`src/popup/popup.html`, `src/popup/styles.css`, `src/popup/index.ts`) with no new dependencies or storage/background changes.
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.6.x  
-**Primary Dependencies**: Chrome Extension MV3 APIs (runtime, storage, tabs), vanilla DOM/TS, existing shared helpers  
-**Storage**: `chrome.storage.local` (versioned schema)  
-**Testing**: `npm test` (vitest) + `npm run lint`, optional `npm run typecheck`  
-**Target Platform**: Chromium-based browsers (MV3 extension popup)  
-**Project Type**: Single browser extension project  
-**Performance Goals**: Popup renders/updates instantly for small word lists; no user-visible delays when opening settings  
-**Constraints**: MV3, no new permissions, no popup console errors, layout stays compact  
-**Scale/Scope**: Small client-side word list; single popup surface change
+**Primary Dependencies**: Chrome Extension MV3 APIs (runtime/tabs for options opener), vanilla DOM/CSS  
+**Storage**: `chrome.storage.local` (unchanged)  
+**Testing**: `npm test`, `npm run lint`, `npm run build`  
+**Target Platform**: MV3 browser extension popup  
+**Project Type**: Single extension project  
+**Performance Goals**: Instant popup render/update for header; no added latency for options opening  
+**Constraints**: DOM/CSS changes only in popup header; count sits left of gear on same row; gear borderless visual size ~18–22px with ≥32×32 hit area; spacing between count and gear ~6–10px; no new dependencies or permissions; no storage/background changes  
+**Scale/Scope**: Small UI polish confined to `src/popup/popup.html`, `src/popup/styles.css`, `src/popup/index.ts`
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Constitution file is placeholder with no enforceable principles; proceed under standard repo quality practices (tests/lint) and keep plan implementation-focused. Gate passed.
+Constitution file is placeholder; apply standard repo quality gates (tests/lint) and stay within popup UI scope. Gate passed.
 
 ## Project Structure
 
@@ -42,20 +42,20 @@ specs/004-popup-settings/
 ### Source Code (repository root)
 ```text
 src/
-├── popup/          # popup.html, popup.ts build, styles.css (header/layout work here)
-├── options/        # options page (target for settings opener)
-├── background/     # message handling
-├── content/        # page interactions
-├── shared/         # storage schema, messaging types, helpers
-├── types/          # shared type definitions
+├── popup/          # popup.html, styles.css, index.ts (header layout/count/gear work here)
+├── options/
+├── background/
+├── content/
+├── shared/
+├── types/
 └── assets/
 
 tests/
 ├── unit/
-└── integration/
+└── integration/    # manual smoke instructions file
 ```
 
-**Structure Decision**: Single MV3 extension project; this feature touches `src/popup/*` for UI/layout and uses existing shared storage/message types from `src/shared`.
+**Structure Decision**: Single MV3 extension; only popup header files (`src/popup/popup.html`, `src/popup/styles.css`, `src/popup/index.ts`) change. Tests rely on existing commands; no new assets or modules added.
 
 ## Complexity Tracking
 

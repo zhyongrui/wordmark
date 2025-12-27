@@ -9,9 +9,9 @@
 
 ### User Story 1 - Open settings from popup (Priority: P1)
 
-A user wants to change extension settings directly from the popup by clicking a settings icon in the header.
+A user wants to change extension settings directly from the popup by clicking a clearly visible, borderless gear icon in the header.
 
-**Why this priority**: Enables quick access to configuration without leaving the popup, reducing friction for all users.
+**Why this priority**: Enables quick access to configuration without leaving the popup, reducing friction for all users while keeping the control visually clear.
 
 **Independent Test**: Open the popup, click the settings icon, and confirm the extension settings page loads without extra navigation steps.
 
@@ -19,12 +19,13 @@ A user wants to change extension settings directly from the popup by clicking a 
 
 1. **Given** the popup is open, **When** the user clicks the settings icon, **Then** the extension settings page opens successfully.
 2. **Given** the settings page is already open in a browser context, **When** the user clicks the settings icon again, **Then** a settings view is still presented (open or focused) without error.
+3. **Given** the popup header renders, **When** the settings icon appears, **Then** it is a borderless gear glyph with a visual size around 18–22px and a clickable hot zone of at least 32×32.
 
 ---
 
 ### User Story 2 - See total word count at a glance (Priority: P2)
 
-A user wants to know how many saved words exist without hunting for the value, with the total clearly centered in the popup header.
+A user wants to know how many saved words exist without hunting for the value, with the total clearly visible near the settings icon on the right side.
 
 **Why this priority**: The total count is a core indicator of progress; centering it increases visibility and reduces confusion.
 
@@ -32,8 +33,8 @@ A user wants to know how many saved words exist without hunting for the value, w
 
 **Acceptance Scenarios**:
 
-1. **Given** the user opens the popup, **When** the header renders, **Then** the total word count is visibly centered and readable.
-2. **Given** the user adds or removes a word, **When** the popup updates, **Then** the centered total reflects the new count.
+1. **Given** the user opens the popup, **When** the header renders, **Then** the total word count is on the same row to the left of the gear icon, separated by roughly 6–10px, and readable (not centered across the header).
+2. **Given** the user adds or removes a word, **When** the popup updates, **Then** the total displayed near the gear reflects the new count.
 
 ---
 
@@ -56,17 +57,17 @@ A user expects existing popup actions (highlight toggle, search, viewing and del
 
 - Settings icon is clicked repeatedly or quickly: each action should still present a settings view without duplicate errors.
 - Settings icon is used while offline: the settings page still opens because it is part of the extension package.
-- Word list is empty: the centered total displays zero clearly without misalignment.
-- Word list changes while the popup stays open (add/delete): the centered total updates promptly to match the new total.
-- Very long word lists: the centered total still renders legibly and does not overlap other header elements.
+- Word list is empty: the total displays zero clearly near the gear without misalignment.
+- Word list changes while the popup stays open (add/delete): the total near the gear updates promptly to match the new total.
+- Very long word lists: the total and gear stay aligned on one row without overlapping other header elements.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The popup header MUST show a settings control in the top-right area that is clearly identifiable and clickable.
-- **FR-002**: Selecting the settings control MUST open the extension's settings/options page in a single step, even if that page is already open elsewhere.
-- **FR-003**: The popup header MUST display the total saved word count centered in the header area, replacing the prior right-aligned count.
+- **FR-001**: The popup header MUST show a borderless gear icon in the top-right area that is clearly identifiable and clickable, with a visual size around 18–22px and a clickable hot zone of at least 32×32.
+- **FR-002**: Selecting the settings control MUST open the extension's settings/options page in a single step, even if that page is already open elsewhere, keeping the existing fallback behavior.
+- **FR-003**: The popup header MUST display the total saved word count on the same row to the immediate left of the gear icon, separated by roughly 6–10px, and it MUST NOT be centered across the header.
 - **FR-004**: The displayed total MUST update whenever the saved word list changes (additions, deletions) so the count always matches the current list.
 - **FR-005**: The header layout changes MUST NOT interfere with existing popup interactions (highlight toggle, search, list rendering, deletion); all existing flows continue to operate.
 - **FR-006**: Opening and using the popup with the updated header MUST avoid runtime errors in user-facing contexts (e.g., no visible errors while opening settings, toggling highlight, searching, or deleting).
@@ -88,6 +89,6 @@ A user expects existing popup actions (highlight toggle, search, viewing and del
 ### Measurable Outcomes
 
 - **SC-001**: 100% of clicks on the popup settings control present the extension settings page within one user action during testing.
-- **SC-002**: The centered total word count reflects the actual saved list total within one second of any add or delete action during popup use.
+- **SC-002**: The total word count (shown directly beside the gear) reflects the actual saved list total within one second of any add or delete action during popup use.
 - **SC-003**: Core popup flows (highlight toggle, search, list rendering, deletion) complete without functional regression in at least 10 consecutive smoke-test runs.
-- **SC-004**: Popup interactions after build and reload exhibit zero user-visible console errors across the standard flows exercised in testing.
+- **SC-004**: The gear icon appears borderless and clearly larger (around 18–22px visual size) with the total aligned on the same row within 6–10px; popup interactions after build and reload exhibit zero user-visible console errors across the standard flows exercised in testing.
