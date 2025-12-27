@@ -71,6 +71,21 @@
   cursor: pointer;
 }
 
+.wordmark-button--pronounce {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.wordmark-button--pronounce svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .wordmark-button[disabled] {
   cursor: not-allowed;
   opacity: 0.6;
@@ -98,6 +113,10 @@
   font-weight: bold;
   color: #2a4f6e;
   margin-bottom: 6px;
+}
+
+.wordmark-translation-word-label {
+  display: none;
 }
 
 .wordmark-translation-label {
