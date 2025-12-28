@@ -39,6 +39,16 @@
         gap: 6px;
         margin: 10px 0;
       }
+      .translation-toggle {
+        background: #fff7ed;
+        border: 1px solid #fbbf24;
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      .translation-toggle label {
+        font-weight: 700;
+        color: #92400e;
+      }
       label {
         font-size: 13px;
       }
@@ -72,16 +82,66 @@
         font-size: 13px;
         color: #374151;
       }
+      .status strong {
+        font-weight: 700;
+      }
+      .status-on {
+        color: #065f46;
+      }
+      .status-off {
+        color: #b91c1c;
+      }
       .note {
         margin-top: 10px;
         font-size: 12px;
         color: #6b7280;
+      }
+      .shortcut-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        max-width: 720px;
+        margin-bottom: 12px;
+      }
+      .shortcut-card h2 {
+        margin: 0 0 8px;
+      }
+      .shortcut-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .shortcut-button {
+        font-size: 13px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #111827;
+        background: #111827;
+        color: #ffffff;
+        cursor: pointer;
+      }
+      .shortcut-button:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 2px;
       }
     </style>
   </head>
   <body>
     <main id="app">
       <h1>WordMark Options</h1>
+
+      <section class="shortcut-card">
+        <h2>Shortcuts</h2>
+        <p class="muted">
+          Set a keyboard shortcut for WordMark in your browser’s shortcut settings. Then, if you plan to use translation,
+          add your API key in the section below.
+        </p>
+        <div class="shortcut-actions">
+          <button class="shortcut-button" type="button" id="shortcut-open">Go to shortcut settings</button>
+        </div>
+      </section>
 
       <section class="card">
         <h2>Translation (Chinese)</h2>
@@ -91,7 +151,7 @@
           sends only the looked-up word and (if present) the definition text.
         </p>
 
-        <div class="field">
+        <div class="field translation-toggle">
           <label>
             <input type="checkbox" id="translation-enabled" />
             Enable translation (opt-in)

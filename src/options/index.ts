@@ -12,12 +12,13 @@ const apiKeyInput = byId<HTMLInputElement>("translation-api-key");
 const saveButton = byId<HTMLButtonElement>("translation-save");
 const clearButton = byId<HTMLButtonElement>("translation-clear");
 const statusEl = byId<HTMLDivElement>("translation-status");
+const shortcutButton = byId<HTMLButtonElement>("shortcut-open");
 
 const setStatus = (message: string) => {
   if (!statusEl) {
     return;
   }
-  statusEl.textContent = message;
+  statusEl.innerHTML = message;
 };
 
 const refresh = async () => {
@@ -31,13 +32,35 @@ const refresh = async () => {
 
   const availability = await getTranslationAvailability();
   setStatus(
-    `Translation: ${availability.enabled ? "ON" : "OFF"} • API key: ${availability.configured ? "configured" : "not configured"}`
+    `Translation: <strong class="${availability.enabled ? "status-on" : "status-off"}">${
+      availability.enabled ? "ON" : "OFF"
+    }</strong> • API key: <strong class="${availability.configured ? "status-on" : "status-off"}">${
+      availability.configured ? "configured" : "not configured"
+    }</strong>`
   );
 };
 
 const initialize = () => {
   if (!enabledCheckbox || !providerSelect || !apiKeyInput || !saveButton || !clearButton) {
     return;
+  }
+
+  if (shortcutButton && chrome?.tabs?.create) {
+    const openShortcutSettings = async () => {
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      const url = ua && ua.includes("Edg/") ? "edge://extensions/shortcuts" : "chrome://extensions/shortcuts";
+      try {
+        const result = chrome.tabs.create({ url });
+        if (result && typeof (result as Promise<chrome.tabs.Tab>).then === "function") {
+          await result;
+        }
+      } catch {
+        // ignore failures in options UI
+      }
+    };
+    shortcutButton.addEventListener("click", () => {
+      void openShortcutSettings();
+    });
   }
 
   enabledCheckbox.addEventListener("change", () => {

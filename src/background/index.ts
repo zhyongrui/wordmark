@@ -61,7 +61,40 @@ const sendLookupTrigger = async (): Promise<void> => {
   }
 };
 
+const openOptionsPage = async (): Promise<void> => {
+  try {
+    if (chrome?.runtime?.openOptionsPage) {
+      await chrome.runtime.openOptionsPage();
+      return;
+    }
+  } catch {
+    // fallback below
+  }
+
+  if (!chrome?.runtime?.getURL || !chrome?.tabs?.create) {
+    return;
+  }
+
+  const url = chrome.runtime.getURL("options.html");
+  try {
+    const result = chrome.tabs.create({ url });
+    if (result && typeof (result as Promise<chrome.tabs.Tab>).then === "function") {
+      await result;
+    }
+  } catch (error) {
+    console.warn("[WordMark] Failed to open options page on install.", error);
+  }
+};
+
 const initializeBackground = () => {
+  if (chrome?.runtime?.onInstalled) {
+    chrome.runtime.onInstalled.addListener((details) => {
+      if (details.reason === "install") {
+        void openOptionsPage();
+      }
+    });
+  }
+
   if (chrome?.commands?.onCommand) {
     chrome.commands.onCommand.addListener((command) => {
       if (command === "lookup-word") {
