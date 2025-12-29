@@ -14,6 +14,16 @@ Vocabulary lookup and highlighting extension for Chromium-based browsers.
 3) Load unpacked extension from the `dist/` folder in your browser.  
 4) After install, Options will open automatically. Click “Go to shortcut settings” to assign the command, then (optionally) add your translation API key.
 
+## Screenshots
+
+<p>
+  <img src="docs/images/overlay.png" width="420" alt="Lookup overlay" />
+  <img src="docs/images/popup.png" width="420" alt="Popup word list" />
+</p>
+<p>
+  <img src="docs/images/demo.png" width="860" alt="In-page demo" />
+</p>
+
 ## Development
 - Build: `npm run build`
 - Test: `npm test`
