@@ -16,12 +16,13 @@ Vocabulary lookup and highlighting extension for Chromium-based browsers.
 
 ## Screenshots
 
-<p>
+<p align="center">
+  <img src="docs/images/demo.png" width="860" alt="In-page demo" />
+</p>
+
+<p align="center">
   <img src="docs/images/overlay.png" width="420" alt="Lookup overlay" />
   <img src="docs/images/popup.png" width="420" alt="Popup word list" />
-</p>
-<p>
-  <img src="docs/images/demo.png" width="860" alt="In-page demo" />
 </p>
 
 ## Development
