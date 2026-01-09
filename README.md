@@ -8,6 +8,9 @@ Vocabulary lookup and highlighting extension for Chromium-based browsers.
 - Shortcut support: assign a browser command (default suggested `Alt+W`) in your browser’s shortcut settings. Options page provides a direct “Go to shortcut settings” button.
 - Optional translation (Gemini) when an API key is provided in Options.
 
+## Install
+- Chrome Web Store: [WordMark](https://chromewebstore.google.com/detail/gkbncpcicoicipfhpdiommlhppjboaim?utm_source=item-share-cb)
+
 ## Getting started
 1) Install dependencies: `npm install`  
 2) Build: `npm run build` (outputs to `dist/`)  
