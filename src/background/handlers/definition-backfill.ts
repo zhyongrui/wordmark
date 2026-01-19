@@ -1,9 +1,11 @@
 import type { DefinitionBackfillRequestPayload, DefinitionBackfillResponse } from "../../shared/messages";
 import { normalizeWord } from "../../shared/word/normalize";
 import { geminiDefinitionProvider } from "../../shared/definition/providers/gemini";
+import { volcengineDefinitionProvider } from "../../shared/definition/providers/volcengine";
 import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
+import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { handleTranslationRequest } from "./translation";
 
 const inSessionDeduper = createInSessionDeduper<DefinitionBackfillResponse>();
@@ -13,6 +15,8 @@ const getProvider = (providerId: string) => {
   switch (providerId) {
     case "gemini":
       return geminiDefinitionProvider;
+    case "volcengine":
+      return volcengineDefinitionProvider;
     default:
       return null;
   }
@@ -46,6 +50,13 @@ export const handleDefinitionBackfillRequest = async (
   const provider = getProvider(settings.providerId);
   if (!provider) {
     return { ok: false, error: "provider_error", message: "Definition backfill unavailable (provider error)." };
+  }
+
+  if (settings.providerId === "volcengine") {
+    const config = await getVolcengineConfig();
+    if (!config) {
+      return { ok: false, error: "not_configured", message: "Definition backfill is not configured." };
+    }
   }
 
   const cacheKey = makeCacheKey(provider.id, normalized);

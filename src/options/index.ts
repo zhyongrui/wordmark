@@ -1,6 +1,11 @@
 import { clearTranslationApiKey, setTranslationApiKey } from "../shared/translation/secrets";
 import { updateTranslationSettings, readTranslationSettings } from "../shared/translation/settings";
 import { getTranslationAvailability } from "../shared/translation/status";
+import {
+  clearVolcengineConfig,
+  readVolcengineConfig,
+  writeVolcengineConfig
+} from "../shared/translation/volcengine";
 
 const byId = <T extends HTMLElement>(id: string): T | null => {
   return document.getElementById(id) as T | null;
@@ -13,12 +18,24 @@ const saveButton = byId<HTMLButtonElement>("translation-save");
 const clearButton = byId<HTMLButtonElement>("translation-clear");
 const statusEl = byId<HTMLDivElement>("translation-status");
 const shortcutButton = byId<HTMLButtonElement>("shortcut-open");
+const volcengineSection = byId<HTMLDivElement>("volcengine-config");
+const volcengineEndpointInput = byId<HTMLInputElement>("volcengine-endpoint");
+const volcengineModelInput = byId<HTMLInputElement>("volcengine-model");
+const volcengineSaveButton = byId<HTMLButtonElement>("volcengine-save");
+const volcengineClearButton = byId<HTMLButtonElement>("volcengine-clear");
 
 const setStatus = (message: string) => {
   if (!statusEl) {
     return;
   }
   statusEl.innerHTML = message;
+};
+
+const updateVolcengineVisibility = () => {
+  if (!providerSelect || !volcengineSection) {
+    return;
+  }
+  volcengineSection.hidden = providerSelect.value !== "volcengine";
 };
 
 const refresh = async () => {
@@ -29,19 +46,37 @@ const refresh = async () => {
   const settings = await readTranslationSettings();
   enabledCheckbox.checked = settings.enabled;
   providerSelect.value = settings.providerId || "gemini";
+  updateVolcengineVisibility();
+
+  if (volcengineEndpointInput && volcengineModelInput) {
+    const volcengineConfig = await readVolcengineConfig();
+    volcengineEndpointInput.value = volcengineConfig.endpointUrl;
+    volcengineModelInput.value = volcengineConfig.modelId;
+  }
 
   const availability = await getTranslationAvailability();
+  const providerLabel = settings.providerId === "volcengine" ? "Volcengine" : "Gemini";
   setStatus(
     `Translation: <strong class="${availability.enabled ? "status-on" : "status-off"}">${
       availability.enabled ? "ON" : "OFF"
-    }</strong> • API key: <strong class="${availability.configured ? "status-on" : "status-off"}">${
-      availability.configured ? "configured" : "not configured"
-    }</strong>`
+    }</strong> • Provider: <strong>${providerLabel}</strong> • Config: <strong class="${
+      availability.configured ? "status-on" : "status-off"
+    }">${availability.configured ? "configured" : "not configured"}</strong>`
   );
 };
 
 const initialize = () => {
-  if (!enabledCheckbox || !providerSelect || !apiKeyInput || !saveButton || !clearButton) {
+  if (
+    !enabledCheckbox ||
+    !providerSelect ||
+    !apiKeyInput ||
+    !saveButton ||
+    !clearButton ||
+    !volcengineEndpointInput ||
+    !volcengineModelInput ||
+    !volcengineSaveButton ||
+    !volcengineClearButton
+  ) {
     return;
   }
 
@@ -73,6 +108,7 @@ const initialize = () => {
   providerSelect.addEventListener("change", () => {
     void (async () => {
       await updateTranslationSettings({ providerId: providerSelect.value });
+      updateVolcengineVisibility();
       await refresh();
     })();
   });
@@ -95,6 +131,29 @@ const initialize = () => {
     void (async () => {
       await clearTranslationApiKey();
       apiKeyInput.value = "";
+      await refresh();
+    })();
+  });
+
+  volcengineSaveButton.addEventListener("click", () => {
+    void (async () => {
+      const endpointUrl = volcengineEndpointInput.value.trim();
+      const modelId = volcengineModelInput.value.trim();
+      if (!endpointUrl || !modelId) {
+        setStatus("Enter a Volcengine endpoint URL and model/endpoint ID first.");
+        return;
+      }
+
+      await writeVolcengineConfig({ endpointUrl, modelId });
+      await refresh();
+    })();
+  });
+
+  volcengineClearButton.addEventListener("click", () => {
+    void (async () => {
+      await clearVolcengineConfig();
+      volcengineEndpointInput.value = "";
+      volcengineModelInput.value = "";
       await refresh();
     })();
   });

@@ -6,8 +6,10 @@ import {
 } from "../../shared/translation/types";
 import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
 import { geminiProvider } from "../../shared/translation/providers/gemini";
+import { volcengineProvider } from "../../shared/translation/providers/volcengine";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
+import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { normalizeWord } from "../../shared/word/normalize";
 import { updateWordZh } from "../../shared/word/store";
 
@@ -20,6 +22,8 @@ const getProvider = (providerId: string) => {
   switch (providerId) {
     case "gemini":
       return geminiProvider;
+    case "volcengine":
+      return volcengineProvider;
     default:
       return null;
   }
@@ -46,6 +50,13 @@ export const handleTranslationRequest = async (
   const provider = getProvider(settings.providerId);
   if (!provider) {
     return createTranslationError("provider_error");
+  }
+
+  if (settings.providerId === "volcengine") {
+    const config = await getVolcengineConfig();
+    if (!config) {
+      return createTranslationError("not_configured");
+    }
   }
 
   const request: TranslationRequest = {

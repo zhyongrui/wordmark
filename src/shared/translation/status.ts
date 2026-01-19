@@ -1,5 +1,6 @@
 import { hasTranslationApiKey } from "./secrets";
 import { readTranslationSettings } from "./settings";
+import { getVolcengineConfig } from "./volcengine";
 
 export type TranslationAvailability = {
   enabled: boolean;
@@ -8,6 +9,12 @@ export type TranslationAvailability = {
 
 export const getTranslationAvailability = async (): Promise<TranslationAvailability> => {
   const settings = await readTranslationSettings();
-  const configured = await hasTranslationApiKey();
+  const hasKey = await hasTranslationApiKey();
+  let configured = hasKey;
+
+  if (settings.providerId === "volcengine") {
+    const config = await getVolcengineConfig();
+    configured = hasKey && config != null;
+  }
   return { enabled: settings.enabled, configured };
 };

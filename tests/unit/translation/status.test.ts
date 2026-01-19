@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setTranslationApiKey, clearTranslationApiKey } from "../../../src/shared/translation/secrets";
 import { updateTranslationSettings } from "../../../src/shared/translation/settings";
 import { getTranslationAvailability } from "../../../src/shared/translation/status";
+import { writeVolcengineConfig, clearVolcengineConfig } from "../../../src/shared/translation/volcengine";
 
 const installMockChromeStorage = () => {
   const data: Record<string, unknown> = {};
@@ -53,5 +54,25 @@ describe("translation availability helper", () => {
     const status = await getTranslationAvailability();
     expect(status).toEqual({ enabled: true, configured: true });
   });
-});
 
+  it("reports configured=false when Volcengine is selected without endpoint config", async () => {
+    await clearVolcengineConfig();
+    await updateTranslationSettings({ enabled: true, providerId: "volcengine" });
+    await setTranslationApiKey("volcengine", "test-key");
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: false });
+  });
+
+  it("reports configured=true when Volcengine is selected with endpoint config", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "volcengine" });
+    await setTranslationApiKey("volcengine", "test-key");
+    await writeVolcengineConfig({
+      endpointUrl: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+      modelId: "volcengine-test-model"
+    });
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: true });
+  });
+});

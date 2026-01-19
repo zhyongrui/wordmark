@@ -7,7 +7,7 @@ import {
 } from "../types";
 import type { TranslationProvider } from "./provider";
 
-const DEFAULT_TIMEOUT_MS = 8000;
+const DEFAULT_TIMEOUT_MS = 20000;
 const GEMINI_BASE_URLS = [
   "https://generativelanguage.googleapis.com/v1beta",
   "https://generativelanguage.googleapis.com/v1"

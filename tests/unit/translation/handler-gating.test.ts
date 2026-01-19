@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleTranslationRequest } from "../../../src/background/handlers/translation";
 import { updateTranslationSettings } from "../../../src/shared/translation/settings";
-import { clearTranslationApiKey } from "../../../src/shared/translation/secrets";
+import { clearTranslationApiKey, setTranslationApiKey } from "../../../src/shared/translation/secrets";
+import { clearVolcengineConfig } from "../../../src/shared/translation/volcengine";
 
 const installMockChromeStorage = () => {
   const data: Record<string, unknown> = {};
@@ -64,5 +65,22 @@ describe("background translation handler gating", () => {
     }
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
-});
 
+  it("returns not_configured and does not call fetch when Volcengine config is missing", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "volcengine" });
+    await setTranslationApiKey("volcengine", "test-key");
+    await clearVolcengineConfig();
+
+    const response = await handleTranslationRequest({
+      word: "hello",
+      definition: "A greeting.",
+      targetLang: "zh"
+    });
+
+    expect(response.ok).toBe(false);
+    if (!response.ok) {
+      expect(response.error).toBe("not_configured");
+    }
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+});

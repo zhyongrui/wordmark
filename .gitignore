@@ -13,3 +13,5 @@ Thumbs.db
 .vscode/
 .idea/
 codex-env.sh
+*.png
+*.zip
