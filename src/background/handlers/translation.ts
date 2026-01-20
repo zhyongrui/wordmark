@@ -7,9 +7,11 @@ import {
 import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
 import { geminiProvider } from "../../shared/translation/providers/gemini";
 import { volcengineProvider } from "../../shared/translation/providers/volcengine";
+import { zhipuProvider } from "../../shared/translation/providers/zhipu";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
+import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { normalizeWord } from "../../shared/word/normalize";
 import { updateWordZh } from "../../shared/word/store";
 
@@ -24,6 +26,8 @@ const getProvider = (providerId: string) => {
       return geminiProvider;
     case "volcengine":
       return volcengineProvider;
+    case "zhipu":
+      return zhipuProvider;
     default:
       return null;
   }
@@ -54,6 +58,12 @@ export const handleTranslationRequest = async (
 
   if (settings.providerId === "volcengine") {
     const config = await getVolcengineConfig();
+    if (!config) {
+      return createTranslationError("not_configured");
+    }
+  }
+  if (settings.providerId === "zhipu") {
+    const config = await getZhipuConfig();
     if (!config) {
       return createTranslationError("not_configured");
     }

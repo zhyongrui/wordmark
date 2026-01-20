@@ -3,6 +3,7 @@ import { handleTranslationRequest } from "../../../src/background/handlers/trans
 import { updateTranslationSettings } from "../../../src/shared/translation/settings";
 import { clearTranslationApiKey, setTranslationApiKey } from "../../../src/shared/translation/secrets";
 import { clearVolcengineConfig } from "../../../src/shared/translation/volcengine";
+import { clearZhipuConfig } from "../../../src/shared/translation/zhipu";
 
 const installMockChromeStorage = () => {
   const data: Record<string, unknown> = {};
@@ -70,6 +71,24 @@ describe("background translation handler gating", () => {
     await updateTranslationSettings({ enabled: true, providerId: "volcengine" });
     await setTranslationApiKey("volcengine", "test-key");
     await clearVolcengineConfig();
+
+    const response = await handleTranslationRequest({
+      word: "hello",
+      definition: "A greeting.",
+      targetLang: "zh"
+    });
+
+    expect(response.ok).toBe(false);
+    if (!response.ok) {
+      expect(response.error).toBe("not_configured");
+    }
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns not_configured and does not call fetch when Zhipu config is missing", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "zhipu" });
+    await setTranslationApiKey("zhipu", "test-key");
+    await clearZhipuConfig();
 
     const response = await handleTranslationRequest({
       word: "hello",

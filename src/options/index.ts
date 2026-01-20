@@ -6,6 +6,7 @@ import {
   readVolcengineConfig,
   writeVolcengineConfig
 } from "../shared/translation/volcengine";
+import { clearZhipuConfig, readZhipuConfig, writeZhipuConfig } from "../shared/translation/zhipu";
 
 const byId = <T extends HTMLElement>(id: string): T | null => {
   return document.getElementById(id) as T | null;
@@ -23,6 +24,11 @@ const volcengineEndpointInput = byId<HTMLInputElement>("volcengine-endpoint");
 const volcengineModelInput = byId<HTMLInputElement>("volcengine-model");
 const volcengineSaveButton = byId<HTMLButtonElement>("volcengine-save");
 const volcengineClearButton = byId<HTMLButtonElement>("volcengine-clear");
+const zhipuSection = byId<HTMLDivElement>("zhipu-config");
+const zhipuEndpointInput = byId<HTMLInputElement>("zhipu-endpoint");
+const zhipuModelInput = byId<HTMLInputElement>("zhipu-model");
+const zhipuSaveButton = byId<HTMLButtonElement>("zhipu-save");
+const zhipuClearButton = byId<HTMLButtonElement>("zhipu-clear");
 
 const setStatus = (message: string) => {
   if (!statusEl) {
@@ -31,11 +37,16 @@ const setStatus = (message: string) => {
   statusEl.innerHTML = message;
 };
 
-const updateVolcengineVisibility = () => {
-  if (!providerSelect || !volcengineSection) {
+const updateProviderVisibility = () => {
+  if (!providerSelect) {
     return;
   }
-  volcengineSection.hidden = providerSelect.value !== "volcengine";
+  if (volcengineSection) {
+    volcengineSection.hidden = providerSelect.value !== "volcengine";
+  }
+  if (zhipuSection) {
+    zhipuSection.hidden = providerSelect.value !== "zhipu";
+  }
 };
 
 const refresh = async () => {
@@ -46,16 +57,26 @@ const refresh = async () => {
   const settings = await readTranslationSettings();
   enabledCheckbox.checked = settings.enabled;
   providerSelect.value = settings.providerId || "gemini";
-  updateVolcengineVisibility();
+  updateProviderVisibility();
 
   if (volcengineEndpointInput && volcengineModelInput) {
     const volcengineConfig = await readVolcengineConfig();
     volcengineEndpointInput.value = volcengineConfig.endpointUrl;
     volcengineModelInput.value = volcengineConfig.modelId;
   }
+  if (zhipuEndpointInput && zhipuModelInput) {
+    const zhipuConfig = await readZhipuConfig();
+    zhipuEndpointInput.value = zhipuConfig.endpointUrl;
+    zhipuModelInput.value = zhipuConfig.modelId;
+  }
 
   const availability = await getTranslationAvailability();
-  const providerLabel = settings.providerId === "volcengine" ? "Volcengine" : "Gemini";
+  const providerLabel =
+    settings.providerId === "volcengine"
+      ? "Volcengine"
+      : settings.providerId === "zhipu"
+        ? "Zhipu"
+        : "Gemini";
   setStatus(
     `Translation: <strong class="${availability.enabled ? "status-on" : "status-off"}">${
       availability.enabled ? "ON" : "OFF"
@@ -75,7 +96,11 @@ const initialize = () => {
     !volcengineEndpointInput ||
     !volcengineModelInput ||
     !volcengineSaveButton ||
-    !volcengineClearButton
+    !volcengineClearButton ||
+    !zhipuEndpointInput ||
+    !zhipuModelInput ||
+    !zhipuSaveButton ||
+    !zhipuClearButton
   ) {
     return;
   }
@@ -108,7 +133,7 @@ const initialize = () => {
   providerSelect.addEventListener("change", () => {
     void (async () => {
       await updateTranslationSettings({ providerId: providerSelect.value });
-      updateVolcengineVisibility();
+      updateProviderVisibility();
       await refresh();
     })();
   });
@@ -154,6 +179,29 @@ const initialize = () => {
       await clearVolcengineConfig();
       volcengineEndpointInput.value = "";
       volcengineModelInput.value = "";
+      await refresh();
+    })();
+  });
+
+  zhipuSaveButton.addEventListener("click", () => {
+    void (async () => {
+      const endpointUrl = zhipuEndpointInput.value.trim();
+      const modelId = zhipuModelInput.value.trim();
+      if (!endpointUrl || !modelId) {
+        setStatus("Enter a Zhipu endpoint URL and model ID first.");
+        return;
+      }
+
+      await writeZhipuConfig({ endpointUrl, modelId });
+      await refresh();
+    })();
+  });
+
+  zhipuClearButton.addEventListener("click", () => {
+    void (async () => {
+      await clearZhipuConfig();
+      zhipuEndpointInput.value = "";
+      zhipuModelInput.value = "";
       await refresh();
     })();
   });

@@ -96,7 +96,7 @@
         font-size: 12px;
         color: #6b7280;
       }
-      .volcengine-config {
+      .provider-config {
         margin-top: 12px;
         padding: 12px;
         border: 1px dashed #e5e7eb;
@@ -170,10 +170,11 @@
           <select id="translation-provider">
             <option value="gemini">Gemini</option>
             <option value="volcengine">Volcengine</option>
+            <option value="zhipu">Zhipu</option>
           </select>
         </div>
 
-        <div id="volcengine-config" class="volcengine-config" hidden>
+        <div id="volcengine-config" class="provider-config" hidden>
           <div class="field">
             <label for="volcengine-endpoint">Volcengine endpoint URL</label>
             <input
@@ -195,6 +196,30 @@
           </div>
 
           <div class="note">Volcengine configuration is required only when Volcengine is selected.</div>
+        </div>
+
+        <div id="zhipu-config" class="provider-config" hidden>
+          <div class="field">
+            <label for="zhipu-endpoint">Zhipu endpoint URL</label>
+            <input
+              id="zhipu-endpoint"
+              type="text"
+              autocomplete="off"
+              placeholder="https://open.bigmodel.cn/api/paas/v4/chat/completions"
+            />
+          </div>
+
+          <div class="field">
+            <label for="zhipu-model">Zhipu model ID</label>
+            <input id="zhipu-model" type="text" autocomplete="off" placeholder="Enter model ID" />
+          </div>
+
+          <div class="row">
+            <button class="primary" type="button" id="zhipu-save">Save Zhipu config</button>
+            <button type="button" id="zhipu-clear">Clear Zhipu config</button>
+          </div>
+
+          <div class="note">Zhipu configuration is required only when Zhipu is selected.</div>
         </div>
 
         <div class="field">

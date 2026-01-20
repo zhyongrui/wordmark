@@ -3,6 +3,7 @@ import { setTranslationApiKey, clearTranslationApiKey } from "../../../src/share
 import { updateTranslationSettings } from "../../../src/shared/translation/settings";
 import { getTranslationAvailability } from "../../../src/shared/translation/status";
 import { writeVolcengineConfig, clearVolcengineConfig } from "../../../src/shared/translation/volcengine";
+import { writeZhipuConfig, clearZhipuConfig } from "../../../src/shared/translation/zhipu";
 
 const installMockChromeStorage = () => {
   const data: Record<string, unknown> = {};
@@ -70,6 +71,27 @@ describe("translation availability helper", () => {
     await writeVolcengineConfig({
       endpointUrl: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
       modelId: "volcengine-test-model"
+    });
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: true });
+  });
+
+  it("reports configured=false when Zhipu is selected without endpoint config", async () => {
+    await clearZhipuConfig();
+    await updateTranslationSettings({ enabled: true, providerId: "zhipu" });
+    await setTranslationApiKey("zhipu", "test-key");
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: false });
+  });
+
+  it("reports configured=true when Zhipu is selected with endpoint config", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "zhipu" });
+    await setTranslationApiKey("zhipu", "test-key");
+    await writeZhipuConfig({
+      endpointUrl: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+      modelId: "glm-4.7"
     });
 
     const status = await getTranslationAvailability();

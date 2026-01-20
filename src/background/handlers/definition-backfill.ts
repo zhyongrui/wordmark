@@ -2,10 +2,12 @@ import type { DefinitionBackfillRequestPayload, DefinitionBackfillResponse } fro
 import { normalizeWord } from "../../shared/word/normalize";
 import { geminiDefinitionProvider } from "../../shared/definition/providers/gemini";
 import { volcengineDefinitionProvider } from "../../shared/definition/providers/volcengine";
+import { zhipuDefinitionProvider } from "../../shared/definition/providers/zhipu";
 import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
+import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { handleTranslationRequest } from "./translation";
 
 const inSessionDeduper = createInSessionDeduper<DefinitionBackfillResponse>();
@@ -17,6 +19,8 @@ const getProvider = (providerId: string) => {
       return geminiDefinitionProvider;
     case "volcengine":
       return volcengineDefinitionProvider;
+    case "zhipu":
+      return zhipuDefinitionProvider;
     default:
       return null;
   }
@@ -54,6 +58,12 @@ export const handleDefinitionBackfillRequest = async (
 
   if (settings.providerId === "volcengine") {
     const config = await getVolcengineConfig();
+    if (!config) {
+      return { ok: false, error: "not_configured", message: "Definition backfill is not configured." };
+    }
+  }
+  if (settings.providerId === "zhipu") {
+    const config = await getZhipuConfig();
     if (!config) {
       return { ok: false, error: "not_configured", message: "Definition backfill is not configured." };
     }
