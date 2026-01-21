@@ -1,6 +1,7 @@
 import type { DefinitionBackfillRequestPayload, DefinitionBackfillResponse } from "../../shared/messages";
 import { normalizeWord } from "../../shared/word/normalize";
 import { geminiDefinitionProvider } from "../../shared/definition/providers/gemini";
+import { deepseekDefinitionProvider } from "../../shared/definition/providers/deepseek";
 import { moonshotDefinitionProvider } from "../../shared/definition/providers/moonshot";
 import { openaiDefinitionProvider } from "../../shared/definition/providers/openai";
 import { volcengineDefinitionProvider } from "../../shared/definition/providers/volcengine";
@@ -8,6 +9,7 @@ import { zhipuDefinitionProvider } from "../../shared/definition/providers/zhipu
 import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
+import { getDeepSeekConfig } from "../../shared/translation/deepseek";
 import { getMoonshotConfig } from "../../shared/translation/moonshot";
 import { getOpenAIConfig } from "../../shared/translation/openai";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
@@ -21,6 +23,8 @@ const getProvider = (providerId: string) => {
   switch (providerId) {
     case "gemini":
       return geminiDefinitionProvider;
+    case "deepseek":
+      return deepseekDefinitionProvider;
     case "moonshot":
       return moonshotDefinitionProvider;
     case "openai":
@@ -66,6 +70,12 @@ export const handleDefinitionBackfillRequest = async (
 
   if (settings.providerId === "volcengine") {
     const config = await getVolcengineConfig();
+    if (!config) {
+      return { ok: false, error: "not_configured", message: "Definition backfill is not configured." };
+    }
+  }
+  if (settings.providerId === "deepseek") {
+    const config = await getDeepSeekConfig();
     if (!config) {
       return { ok: false, error: "not_configured", message: "Definition backfill is not configured." };
     }

@@ -6,12 +6,14 @@ import {
 } from "../../shared/translation/types";
 import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
 import { geminiProvider } from "../../shared/translation/providers/gemini";
+import { deepseekProvider } from "../../shared/translation/providers/deepseek";
 import { moonshotProvider } from "../../shared/translation/providers/moonshot";
 import { openaiProvider } from "../../shared/translation/providers/openai";
 import { volcengineProvider } from "../../shared/translation/providers/volcengine";
 import { zhipuProvider } from "../../shared/translation/providers/zhipu";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
+import { getDeepSeekConfig } from "../../shared/translation/deepseek";
 import { getMoonshotConfig } from "../../shared/translation/moonshot";
 import { getOpenAIConfig } from "../../shared/translation/openai";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
@@ -28,6 +30,8 @@ const getProvider = (providerId: string) => {
   switch (providerId) {
     case "gemini":
       return geminiProvider;
+    case "deepseek":
+      return deepseekProvider;
     case "moonshot":
       return moonshotProvider;
     case "openai":
@@ -66,6 +70,12 @@ export const handleTranslationRequest = async (
 
   if (settings.providerId === "volcengine") {
     const config = await getVolcengineConfig();
+    if (!config) {
+      return createTranslationError("not_configured");
+    }
+  }
+  if (settings.providerId === "deepseek") {
+    const config = await getDeepSeekConfig();
     if (!config) {
       return createTranslationError("not_configured");
     }

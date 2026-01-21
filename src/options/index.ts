@@ -1,6 +1,7 @@
 import { clearTranslationApiKey, setTranslationApiKey } from "../shared/translation/secrets";
 import { updateTranslationSettings, readTranslationSettings } from "../shared/translation/settings";
 import { getTranslationAvailability } from "../shared/translation/status";
+import { clearDeepSeekConfig, readDeepSeekConfig, writeDeepSeekConfig } from "../shared/translation/deepseek";
 import { clearMoonshotConfig, readMoonshotConfig, writeMoonshotConfig } from "../shared/translation/moonshot";
 import { clearOpenAIConfig, readOpenAIConfig, writeOpenAIConfig } from "../shared/translation/openai";
 import {
@@ -21,6 +22,11 @@ const saveButton = byId<HTMLButtonElement>("translation-save");
 const clearButton = byId<HTMLButtonElement>("translation-clear");
 const statusEl = byId<HTMLDivElement>("translation-status");
 const shortcutButton = byId<HTMLButtonElement>("shortcut-open");
+const deepseekSection = byId<HTMLDivElement>("deepseek-config");
+const deepseekEndpointInput = byId<HTMLInputElement>("deepseek-endpoint");
+const deepseekModelInput = byId<HTMLInputElement>("deepseek-model");
+const deepseekSaveButton = byId<HTMLButtonElement>("deepseek-save");
+const deepseekClearButton = byId<HTMLButtonElement>("deepseek-clear");
 const moonshotSection = byId<HTMLDivElement>("moonshot-config");
 const moonshotEndpointInput = byId<HTMLInputElement>("moonshot-endpoint");
 const moonshotModelInput = byId<HTMLInputElement>("moonshot-model");
@@ -53,6 +59,9 @@ const updateProviderVisibility = () => {
   if (!providerSelect) {
     return;
   }
+  if (deepseekSection) {
+    deepseekSection.hidden = providerSelect.value !== "deepseek";
+  }
   if (moonshotSection) {
     moonshotSection.hidden = providerSelect.value !== "moonshot";
   }
@@ -77,6 +86,11 @@ const refresh = async () => {
   providerSelect.value = settings.providerId || "gemini";
   updateProviderVisibility();
 
+  if (deepseekEndpointInput && deepseekModelInput) {
+    const deepseekConfig = await readDeepSeekConfig();
+    deepseekEndpointInput.value = deepseekConfig.endpointUrl;
+    deepseekModelInput.value = deepseekConfig.modelId;
+  }
   if (moonshotEndpointInput && moonshotModelInput) {
     const moonshotConfig = await readMoonshotConfig();
     moonshotEndpointInput.value = moonshotConfig.endpointUrl;
@@ -100,15 +114,17 @@ const refresh = async () => {
 
   const availability = await getTranslationAvailability();
   const providerLabel =
-    settings.providerId === "moonshot"
-      ? "Moonshot"
-      : settings.providerId === "openai"
-        ? "OpenAI"
-        : settings.providerId === "volcengine"
-          ? "Volcengine"
-          : settings.providerId === "zhipu"
-            ? "Zhipu"
-            : "Gemini";
+    settings.providerId === "deepseek"
+      ? "DeepSeek"
+      : settings.providerId === "moonshot"
+        ? "Moonshot"
+        : settings.providerId === "openai"
+          ? "OpenAI"
+          : settings.providerId === "volcengine"
+            ? "Volcengine"
+            : settings.providerId === "zhipu"
+              ? "Zhipu"
+              : "Gemini";
   setStatus(
     `Translation: <strong class="${availability.enabled ? "status-on" : "status-off"}">${
       availability.enabled ? "ON" : "OFF"
@@ -125,6 +141,10 @@ const initialize = () => {
     !apiKeyInput ||
     !saveButton ||
     !clearButton ||
+    !deepseekEndpointInput ||
+    !deepseekModelInput ||
+    !deepseekSaveButton ||
+    !deepseekClearButton ||
     !moonshotEndpointInput ||
     !moonshotModelInput ||
     !moonshotSaveButton ||
@@ -196,6 +216,29 @@ const initialize = () => {
     void (async () => {
       await clearTranslationApiKey();
       apiKeyInput.value = "";
+      await refresh();
+    })();
+  });
+
+  deepseekSaveButton.addEventListener("click", () => {
+    void (async () => {
+      const endpointUrl = deepseekEndpointInput.value.trim();
+      const modelId = deepseekModelInput.value.trim();
+      if (!endpointUrl || !modelId) {
+        setStatus("Enter a DeepSeek endpoint URL and model ID first.");
+        return;
+      }
+
+      await writeDeepSeekConfig({ endpointUrl, modelId });
+      await refresh();
+    })();
+  });
+
+  deepseekClearButton.addEventListener("click", () => {
+    void (async () => {
+      await clearDeepSeekConfig();
+      deepseekEndpointInput.value = "";
+      deepseekModelInput.value = "";
       await refresh();
     })();
   });

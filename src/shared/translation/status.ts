@@ -1,5 +1,6 @@
 import { hasTranslationApiKey } from "./secrets";
 import { readTranslationSettings } from "./settings";
+import { getDeepSeekConfig } from "./deepseek";
 import { getMoonshotConfig } from "./moonshot";
 import { getOpenAIConfig } from "./openai";
 import { getVolcengineConfig } from "./volcengine";
@@ -17,6 +18,10 @@ export const getTranslationAvailability = async (): Promise<TranslationAvailabil
 
   if (settings.providerId === "volcengine") {
     const config = await getVolcengineConfig();
+    configured = hasKey && config != null;
+  }
+  if (settings.providerId === "deepseek") {
+    const config = await getDeepSeekConfig();
     configured = hasKey && config != null;
   }
   if (settings.providerId === "moonshot") {

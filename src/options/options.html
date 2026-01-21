@@ -169,11 +169,36 @@
           <label for="translation-provider">Provider</label>
           <select id="translation-provider">
             <option value="gemini">Gemini</option>
+            <option value="deepseek">DeepSeek</option>
             <option value="moonshot">Moonshot</option>
             <option value="openai">OpenAI</option>
             <option value="volcengine">Volcengine</option>
             <option value="zhipu">Zhipu</option>
           </select>
+        </div>
+
+        <div id="deepseek-config" class="provider-config" hidden>
+          <div class="field">
+            <label for="deepseek-endpoint">DeepSeek endpoint URL</label>
+            <input
+              id="deepseek-endpoint"
+              type="text"
+              autocomplete="off"
+              placeholder="https://api.deepseek.com/chat/completions"
+            />
+          </div>
+
+          <div class="field">
+            <label for="deepseek-model">DeepSeek model ID</label>
+            <input id="deepseek-model" type="text" autocomplete="off" placeholder="deepseek-chat" />
+          </div>
+
+          <div class="row">
+            <button class="primary" type="button" id="deepseek-save">Save DeepSeek config</button>
+            <button type="button" id="deepseek-clear">Clear DeepSeek config</button>
+          </div>
+
+          <div class="note">DeepSeek configuration is required only when DeepSeek is selected. Endpoint URLs must be HTTPS.</div>
         </div>
 
         <div id="moonshot-config" class="provider-config" hidden>
