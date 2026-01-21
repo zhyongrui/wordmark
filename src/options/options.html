@@ -172,6 +172,7 @@
             <option value="deepseek">DeepSeek</option>
             <option value="moonshot">Moonshot</option>
             <option value="openai">OpenAI</option>
+            <option value="qwen">Qwen</option>
             <option value="volcengine">Volcengine</option>
             <option value="zhipu">Zhipu</option>
           </select>
@@ -249,6 +250,30 @@
           </div>
 
           <div class="note">OpenAI configuration is required only when OpenAI is selected.</div>
+        </div>
+
+        <div id="qwen-config" class="provider-config" hidden>
+          <div class="field">
+            <label for="qwen-endpoint">Qwen endpoint URL</label>
+            <input
+              id="qwen-endpoint"
+              type="text"
+              autocomplete="off"
+              placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+            />
+          </div>
+
+          <div class="field">
+            <label for="qwen-model">Qwen model ID</label>
+            <input id="qwen-model" type="text" autocomplete="off" placeholder="qwen-plus" />
+          </div>
+
+          <div class="row">
+            <button class="primary" type="button" id="qwen-save">Save Qwen config</button>
+            <button type="button" id="qwen-clear">Clear Qwen config</button>
+          </div>
+
+          <div class="note">Qwen configuration is required only when Qwen is selected.</div>
         </div>
 
         <div id="volcengine-config" class="provider-config" hidden>

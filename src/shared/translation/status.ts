@@ -3,6 +3,7 @@ import { readTranslationSettings } from "./settings";
 import { getDeepSeekConfig } from "./deepseek";
 import { getMoonshotConfig } from "./moonshot";
 import { getOpenAIConfig } from "./openai";
+import { getQwenConfig } from "./qwen";
 import { getVolcengineConfig } from "./volcengine";
 import { getZhipuConfig } from "./zhipu";
 
@@ -30,6 +31,10 @@ export const getTranslationAvailability = async (): Promise<TranslationAvailabil
   }
   if (settings.providerId === "openai") {
     const config = await getOpenAIConfig();
+    configured = hasKey && config != null;
+  }
+  if (settings.providerId === "qwen") {
+    const config = await getQwenConfig();
     configured = hasKey && config != null;
   }
   if (settings.providerId === "zhipu") {

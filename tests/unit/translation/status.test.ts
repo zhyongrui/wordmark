@@ -5,6 +5,7 @@ import { getTranslationAvailability } from "../../../src/shared/translation/stat
 import { writeDeepSeekConfig, clearDeepSeekConfig } from "../../../src/shared/translation/deepseek";
 import { writeMoonshotConfig, clearMoonshotConfig } from "../../../src/shared/translation/moonshot";
 import { writeOpenAIConfig, clearOpenAIConfig } from "../../../src/shared/translation/openai";
+import { writeQwenConfig, clearQwenConfig } from "../../../src/shared/translation/qwen";
 import { writeVolcengineConfig, clearVolcengineConfig } from "../../../src/shared/translation/volcengine";
 import { writeZhipuConfig, clearZhipuConfig } from "../../../src/shared/translation/zhipu";
 
@@ -116,6 +117,27 @@ describe("translation availability helper", () => {
     await writeOpenAIConfig({
       endpointUrl: "https://api.openai.com/v1/chat/completions",
       modelId: "gpt-4.1-mini"
+    });
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: true });
+  });
+
+  it("reports configured=false when Qwen is selected without endpoint config", async () => {
+    await clearQwenConfig();
+    await updateTranslationSettings({ enabled: true, providerId: "qwen" });
+    await setTranslationApiKey("qwen", "test-key");
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: false });
+  });
+
+  it("reports configured=true when Qwen is selected with endpoint config", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "qwen" });
+    await setTranslationApiKey("qwen", "test-key");
+    await writeQwenConfig({
+      endpointUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      modelId: "qwen-plus"
     });
 
     const status = await getTranslationAvailability();

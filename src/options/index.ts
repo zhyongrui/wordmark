@@ -4,6 +4,7 @@ import { getTranslationAvailability } from "../shared/translation/status";
 import { clearDeepSeekConfig, readDeepSeekConfig, writeDeepSeekConfig } from "../shared/translation/deepseek";
 import { clearMoonshotConfig, readMoonshotConfig, writeMoonshotConfig } from "../shared/translation/moonshot";
 import { clearOpenAIConfig, readOpenAIConfig, writeOpenAIConfig } from "../shared/translation/openai";
+import { clearQwenConfig, readQwenConfig, writeQwenConfig } from "../shared/translation/qwen";
 import {
   clearVolcengineConfig,
   readVolcengineConfig,
@@ -37,6 +38,11 @@ const openaiEndpointInput = byId<HTMLInputElement>("openai-endpoint");
 const openaiModelInput = byId<HTMLInputElement>("openai-model");
 const openaiSaveButton = byId<HTMLButtonElement>("openai-save");
 const openaiClearButton = byId<HTMLButtonElement>("openai-clear");
+const qwenSection = byId<HTMLDivElement>("qwen-config");
+const qwenEndpointInput = byId<HTMLInputElement>("qwen-endpoint");
+const qwenModelInput = byId<HTMLInputElement>("qwen-model");
+const qwenSaveButton = byId<HTMLButtonElement>("qwen-save");
+const qwenClearButton = byId<HTMLButtonElement>("qwen-clear");
 const volcengineSection = byId<HTMLDivElement>("volcengine-config");
 const volcengineEndpointInput = byId<HTMLInputElement>("volcengine-endpoint");
 const volcengineModelInput = byId<HTMLInputElement>("volcengine-model");
@@ -67,6 +73,9 @@ const updateProviderVisibility = () => {
   }
   if (openaiSection) {
     openaiSection.hidden = providerSelect.value !== "openai";
+  }
+  if (qwenSection) {
+    qwenSection.hidden = providerSelect.value !== "qwen";
   }
   if (volcengineSection) {
     volcengineSection.hidden = providerSelect.value !== "volcengine";
@@ -101,6 +110,11 @@ const refresh = async () => {
     openaiEndpointInput.value = openaiConfig.endpointUrl;
     openaiModelInput.value = openaiConfig.modelId;
   }
+  if (qwenEndpointInput && qwenModelInput) {
+    const qwenConfig = await readQwenConfig();
+    qwenEndpointInput.value = qwenConfig.endpointUrl;
+    qwenModelInput.value = qwenConfig.modelId;
+  }
   if (volcengineEndpointInput && volcengineModelInput) {
     const volcengineConfig = await readVolcengineConfig();
     volcengineEndpointInput.value = volcengineConfig.endpointUrl;
@@ -120,11 +134,13 @@ const refresh = async () => {
         ? "Moonshot"
         : settings.providerId === "openai"
           ? "OpenAI"
-          : settings.providerId === "volcengine"
-            ? "Volcengine"
-            : settings.providerId === "zhipu"
-              ? "Zhipu"
-              : "Gemini";
+          : settings.providerId === "qwen"
+            ? "Qwen"
+            : settings.providerId === "volcengine"
+              ? "Volcengine"
+              : settings.providerId === "zhipu"
+                ? "Zhipu"
+                : "Gemini";
   setStatus(
     `Translation: <strong class="${availability.enabled ? "status-on" : "status-off"}">${
       availability.enabled ? "ON" : "OFF"
@@ -153,6 +169,10 @@ const initialize = () => {
     !openaiModelInput ||
     !openaiSaveButton ||
     !openaiClearButton ||
+    !qwenEndpointInput ||
+    !qwenModelInput ||
+    !qwenSaveButton ||
+    !qwenClearButton ||
     !volcengineEndpointInput ||
     !volcengineModelInput ||
     !volcengineSaveButton ||
@@ -285,6 +305,29 @@ const initialize = () => {
       await clearOpenAIConfig();
       openaiEndpointInput.value = "";
       openaiModelInput.value = "";
+      await refresh();
+    })();
+  });
+
+  qwenSaveButton.addEventListener("click", () => {
+    void (async () => {
+      const endpointUrl = qwenEndpointInput.value.trim();
+      const modelId = qwenModelInput.value.trim();
+      if (!endpointUrl || !modelId) {
+        setStatus("Enter a Qwen endpoint URL and model ID first.");
+        return;
+      }
+
+      await writeQwenConfig({ endpointUrl, modelId });
+      await refresh();
+    })();
+  });
+
+  qwenClearButton.addEventListener("click", () => {
+    void (async () => {
+      await clearQwenConfig();
+      qwenEndpointInput.value = "";
+      qwenModelInput.value = "";
       await refresh();
     })();
   });

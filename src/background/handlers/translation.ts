@@ -9,6 +9,7 @@ import { geminiProvider } from "../../shared/translation/providers/gemini";
 import { deepseekProvider } from "../../shared/translation/providers/deepseek";
 import { moonshotProvider } from "../../shared/translation/providers/moonshot";
 import { openaiProvider } from "../../shared/translation/providers/openai";
+import { qwenProvider } from "../../shared/translation/providers/qwen";
 import { volcengineProvider } from "../../shared/translation/providers/volcengine";
 import { zhipuProvider } from "../../shared/translation/providers/zhipu";
 import { readTranslationSettings } from "../../shared/translation/settings";
@@ -16,6 +17,7 @@ import { getTranslationApiKey } from "../../shared/translation/secrets";
 import { getDeepSeekConfig } from "../../shared/translation/deepseek";
 import { getMoonshotConfig } from "../../shared/translation/moonshot";
 import { getOpenAIConfig } from "../../shared/translation/openai";
+import { getQwenConfig } from "../../shared/translation/qwen";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { normalizeWord } from "../../shared/word/normalize";
@@ -36,6 +38,8 @@ const getProvider = (providerId: string) => {
       return moonshotProvider;
     case "openai":
       return openaiProvider;
+    case "qwen":
+      return qwenProvider;
     case "volcengine":
       return volcengineProvider;
     case "zhipu":
@@ -88,6 +92,12 @@ export const handleTranslationRequest = async (
   }
   if (settings.providerId === "openai") {
     const config = await getOpenAIConfig();
+    if (!config) {
+      return createTranslationError("not_configured");
+    }
+  }
+  if (settings.providerId === "qwen") {
+    const config = await getQwenConfig();
     if (!config) {
       return createTranslationError("not_configured");
     }

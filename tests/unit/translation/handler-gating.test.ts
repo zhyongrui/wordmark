@@ -5,6 +5,7 @@ import { clearTranslationApiKey, setTranslationApiKey } from "../../../src/share
 import { clearDeepSeekConfig } from "../../../src/shared/translation/deepseek";
 import { clearMoonshotConfig } from "../../../src/shared/translation/moonshot";
 import { clearOpenAIConfig } from "../../../src/shared/translation/openai";
+import { clearQwenConfig } from "../../../src/shared/translation/qwen";
 import { clearVolcengineConfig } from "../../../src/shared/translation/volcengine";
 import { clearZhipuConfig } from "../../../src/shared/translation/zhipu";
 
@@ -128,6 +129,24 @@ describe("background translation handler gating", () => {
     await updateTranslationSettings({ enabled: true, providerId: "openai" });
     await setTranslationApiKey("openai", "test-key");
     await clearOpenAIConfig();
+
+    const response = await handleTranslationRequest({
+      word: "hello",
+      definition: "A greeting.",
+      targetLang: "zh"
+    });
+
+    expect(response.ok).toBe(false);
+    if (!response.ok) {
+      expect(response.error).toBe("not_configured");
+    }
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns not_configured and does not call fetch when Qwen config is missing", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "qwen" });
+    await setTranslationApiKey("qwen", "test-key");
+    await clearQwenConfig();
 
     const response = await handleTranslationRequest({
       word: "hello",

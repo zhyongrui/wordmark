@@ -4,6 +4,7 @@ import { geminiDefinitionProvider } from "../../shared/definition/providers/gemi
 import { deepseekDefinitionProvider } from "../../shared/definition/providers/deepseek";
 import { moonshotDefinitionProvider } from "../../shared/definition/providers/moonshot";
 import { openaiDefinitionProvider } from "../../shared/definition/providers/openai";
+import { qwenDefinitionProvider } from "../../shared/definition/providers/qwen";
 import { volcengineDefinitionProvider } from "../../shared/definition/providers/volcengine";
 import { zhipuDefinitionProvider } from "../../shared/definition/providers/zhipu";
 import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
@@ -12,6 +13,7 @@ import { getTranslationApiKey } from "../../shared/translation/secrets";
 import { getDeepSeekConfig } from "../../shared/translation/deepseek";
 import { getMoonshotConfig } from "../../shared/translation/moonshot";
 import { getOpenAIConfig } from "../../shared/translation/openai";
+import { getQwenConfig } from "../../shared/translation/qwen";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { handleTranslationRequest } from "./translation";
@@ -29,6 +31,8 @@ const getProvider = (providerId: string) => {
       return moonshotDefinitionProvider;
     case "openai":
       return openaiDefinitionProvider;
+    case "qwen":
+      return qwenDefinitionProvider;
     case "volcengine":
       return volcengineDefinitionProvider;
     case "zhipu":
@@ -88,6 +92,12 @@ export const handleDefinitionBackfillRequest = async (
   }
   if (settings.providerId === "openai") {
     const config = await getOpenAIConfig();
+    if (!config) {
+      return { ok: false, error: "not_configured", message: "Definition backfill is not configured." };
+    }
+  }
+  if (settings.providerId === "qwen") {
+    const config = await getQwenConfig();
     if (!config) {
       return { ok: false, error: "not_configured", message: "Definition backfill is not configured." };
     }
