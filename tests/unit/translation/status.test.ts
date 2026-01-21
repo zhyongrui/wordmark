@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setTranslationApiKey, clearTranslationApiKey } from "../../../src/shared/translation/secrets";
 import { updateTranslationSettings } from "../../../src/shared/translation/settings";
 import { getTranslationAvailability } from "../../../src/shared/translation/status";
+import { writeOpenAIConfig, clearOpenAIConfig } from "../../../src/shared/translation/openai";
 import { writeVolcengineConfig, clearVolcengineConfig } from "../../../src/shared/translation/volcengine";
 import { writeZhipuConfig, clearZhipuConfig } from "../../../src/shared/translation/zhipu";
 
@@ -51,6 +52,27 @@ describe("translation availability helper", () => {
   it("reports configured=true when enabled and API key is present", async () => {
     await updateTranslationSettings({ enabled: true, providerId: "gemini" });
     await setTranslationApiKey("gemini", "test-key");
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: true });
+  });
+
+  it("reports configured=false when OpenAI is selected without endpoint config", async () => {
+    await clearOpenAIConfig();
+    await updateTranslationSettings({ enabled: true, providerId: "openai" });
+    await setTranslationApiKey("openai", "test-key");
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: false });
+  });
+
+  it("reports configured=true when OpenAI is selected with endpoint config", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "openai" });
+    await setTranslationApiKey("openai", "test-key");
+    await writeOpenAIConfig({
+      endpointUrl: "https://api.openai.com/v1/chat/completions",
+      modelId: "gpt-4.1-mini"
+    });
 
     const status = await getTranslationAvailability();
     expect(status).toEqual({ enabled: true, configured: true });

@@ -169,9 +169,34 @@
           <label for="translation-provider">Provider</label>
           <select id="translation-provider">
             <option value="gemini">Gemini</option>
+            <option value="openai">OpenAI</option>
             <option value="volcengine">Volcengine</option>
             <option value="zhipu">Zhipu</option>
           </select>
+        </div>
+
+        <div id="openai-config" class="provider-config" hidden>
+          <div class="field">
+            <label for="openai-endpoint">OpenAI endpoint URL</label>
+            <input
+              id="openai-endpoint"
+              type="text"
+              autocomplete="off"
+              placeholder="https://api.openai.com/v1/chat/completions"
+            />
+          </div>
+
+          <div class="field">
+            <label for="openai-model">OpenAI model ID</label>
+            <input id="openai-model" type="text" autocomplete="off" placeholder="Enter model ID" />
+          </div>
+
+          <div class="row">
+            <button class="primary" type="button" id="openai-save">Save OpenAI config</button>
+            <button type="button" id="openai-clear">Clear OpenAI config</button>
+          </div>
+
+          <div class="note">OpenAI configuration is required only when OpenAI is selected.</div>
         </div>
 
         <div id="volcengine-config" class="provider-config" hidden>

@@ -7,11 +7,16 @@ declare global {
     namespace tabs {
       type Tab = {
         id?: number;
+        url?: string;
       };
 
       type QueryInfo = {
         active?: boolean;
         currentWindow?: boolean;
+      };
+
+      type CreateProperties = {
+        url?: string;
       };
 
       function query(queryInfo: QueryInfo): Promise<Tab[]> | void;
@@ -23,6 +28,9 @@ declare global {
         message: unknown,
         callback: (response: unknown) => void
       ): void;
+
+      function create(createProperties: CreateProperties): Promise<Tab> | void;
+      function create(createProperties: CreateProperties, callback: (tab: Tab) => void): void;
     }
 
     namespace commands {
@@ -36,6 +44,10 @@ declare global {
     namespace runtime {
       type MessageSender = Record<string, unknown>;
       type SendResponse = (response?: unknown) => void;
+      type InstalledDetails = {
+        reason?: string;
+        previousVersion?: string;
+      };
 
       function sendMessage(message: unknown): Promise<unknown> | void;
       function sendMessage(message: unknown, callback: (response: unknown) => void): void;
@@ -53,6 +65,13 @@ declare global {
         | undefined;
 
       function getURL(path: string): string;
+      function openOptionsPage(): Promise<void> | void;
+
+      const onInstalled:
+        | {
+            addListener: (callback: (details: InstalledDetails) => void) => void;
+          }
+        | undefined;
     }
 
     namespace storage {

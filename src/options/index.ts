@@ -1,6 +1,7 @@
 import { clearTranslationApiKey, setTranslationApiKey } from "../shared/translation/secrets";
 import { updateTranslationSettings, readTranslationSettings } from "../shared/translation/settings";
 import { getTranslationAvailability } from "../shared/translation/status";
+import { clearOpenAIConfig, readOpenAIConfig, writeOpenAIConfig } from "../shared/translation/openai";
 import {
   clearVolcengineConfig,
   readVolcengineConfig,
@@ -19,6 +20,11 @@ const saveButton = byId<HTMLButtonElement>("translation-save");
 const clearButton = byId<HTMLButtonElement>("translation-clear");
 const statusEl = byId<HTMLDivElement>("translation-status");
 const shortcutButton = byId<HTMLButtonElement>("shortcut-open");
+const openaiSection = byId<HTMLDivElement>("openai-config");
+const openaiEndpointInput = byId<HTMLInputElement>("openai-endpoint");
+const openaiModelInput = byId<HTMLInputElement>("openai-model");
+const openaiSaveButton = byId<HTMLButtonElement>("openai-save");
+const openaiClearButton = byId<HTMLButtonElement>("openai-clear");
 const volcengineSection = byId<HTMLDivElement>("volcengine-config");
 const volcengineEndpointInput = byId<HTMLInputElement>("volcengine-endpoint");
 const volcengineModelInput = byId<HTMLInputElement>("volcengine-model");
@@ -41,6 +47,9 @@ const updateProviderVisibility = () => {
   if (!providerSelect) {
     return;
   }
+  if (openaiSection) {
+    openaiSection.hidden = providerSelect.value !== "openai";
+  }
   if (volcengineSection) {
     volcengineSection.hidden = providerSelect.value !== "volcengine";
   }
@@ -59,6 +68,11 @@ const refresh = async () => {
   providerSelect.value = settings.providerId || "gemini";
   updateProviderVisibility();
 
+  if (openaiEndpointInput && openaiModelInput) {
+    const openaiConfig = await readOpenAIConfig();
+    openaiEndpointInput.value = openaiConfig.endpointUrl;
+    openaiModelInput.value = openaiConfig.modelId;
+  }
   if (volcengineEndpointInput && volcengineModelInput) {
     const volcengineConfig = await readVolcengineConfig();
     volcengineEndpointInput.value = volcengineConfig.endpointUrl;
@@ -72,11 +86,13 @@ const refresh = async () => {
 
   const availability = await getTranslationAvailability();
   const providerLabel =
-    settings.providerId === "volcengine"
-      ? "Volcengine"
-      : settings.providerId === "zhipu"
-        ? "Zhipu"
-        : "Gemini";
+    settings.providerId === "openai"
+      ? "OpenAI"
+      : settings.providerId === "volcengine"
+        ? "Volcengine"
+        : settings.providerId === "zhipu"
+          ? "Zhipu"
+          : "Gemini";
   setStatus(
     `Translation: <strong class="${availability.enabled ? "status-on" : "status-off"}">${
       availability.enabled ? "ON" : "OFF"
@@ -93,6 +109,10 @@ const initialize = () => {
     !apiKeyInput ||
     !saveButton ||
     !clearButton ||
+    !openaiEndpointInput ||
+    !openaiModelInput ||
+    !openaiSaveButton ||
+    !openaiClearButton ||
     !volcengineEndpointInput ||
     !volcengineModelInput ||
     !volcengineSaveButton ||
@@ -156,6 +176,29 @@ const initialize = () => {
     void (async () => {
       await clearTranslationApiKey();
       apiKeyInput.value = "";
+      await refresh();
+    })();
+  });
+
+  openaiSaveButton.addEventListener("click", () => {
+    void (async () => {
+      const endpointUrl = openaiEndpointInput.value.trim();
+      const modelId = openaiModelInput.value.trim();
+      if (!endpointUrl || !modelId) {
+        setStatus("Enter an OpenAI endpoint URL and model ID first.");
+        return;
+      }
+
+      await writeOpenAIConfig({ endpointUrl, modelId });
+      await refresh();
+    })();
+  });
+
+  openaiClearButton.addEventListener("click", () => {
+    void (async () => {
+      await clearOpenAIConfig();
+      openaiEndpointInput.value = "";
+      openaiModelInput.value = "";
       await refresh();
     })();
   });
