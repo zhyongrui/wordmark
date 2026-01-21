@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setTranslationApiKey, clearTranslationApiKey } from "../../../src/shared/translation/secrets";
 import { updateTranslationSettings } from "../../../src/shared/translation/settings";
 import { getTranslationAvailability } from "../../../src/shared/translation/status";
+import { writeMoonshotConfig, clearMoonshotConfig } from "../../../src/shared/translation/moonshot";
 import { writeOpenAIConfig, clearOpenAIConfig } from "../../../src/shared/translation/openai";
 import { writeVolcengineConfig, clearVolcengineConfig } from "../../../src/shared/translation/volcengine";
 import { writeZhipuConfig, clearZhipuConfig } from "../../../src/shared/translation/zhipu";
@@ -52,6 +53,27 @@ describe("translation availability helper", () => {
   it("reports configured=true when enabled and API key is present", async () => {
     await updateTranslationSettings({ enabled: true, providerId: "gemini" });
     await setTranslationApiKey("gemini", "test-key");
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: true });
+  });
+
+  it("reports configured=false when Moonshot is selected without endpoint config", async () => {
+    await clearMoonshotConfig();
+    await updateTranslationSettings({ enabled: true, providerId: "moonshot" });
+    await setTranslationApiKey("moonshot", "test-key");
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: false });
+  });
+
+  it("reports configured=true when Moonshot is selected with endpoint config", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "moonshot" });
+    await setTranslationApiKey("moonshot", "test-key");
+    await writeMoonshotConfig({
+      endpointUrl: "https://api.moonshot.cn/v1/chat/completions",
+      modelId: "moonshot-test-model"
+    });
 
     const status = await getTranslationAvailability();
     expect(status).toEqual({ enabled: true, configured: true });

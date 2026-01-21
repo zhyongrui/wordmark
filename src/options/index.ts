@@ -1,6 +1,7 @@
 import { clearTranslationApiKey, setTranslationApiKey } from "../shared/translation/secrets";
 import { updateTranslationSettings, readTranslationSettings } from "../shared/translation/settings";
 import { getTranslationAvailability } from "../shared/translation/status";
+import { clearMoonshotConfig, readMoonshotConfig, writeMoonshotConfig } from "../shared/translation/moonshot";
 import { clearOpenAIConfig, readOpenAIConfig, writeOpenAIConfig } from "../shared/translation/openai";
 import {
   clearVolcengineConfig,
@@ -20,6 +21,11 @@ const saveButton = byId<HTMLButtonElement>("translation-save");
 const clearButton = byId<HTMLButtonElement>("translation-clear");
 const statusEl = byId<HTMLDivElement>("translation-status");
 const shortcutButton = byId<HTMLButtonElement>("shortcut-open");
+const moonshotSection = byId<HTMLDivElement>("moonshot-config");
+const moonshotEndpointInput = byId<HTMLInputElement>("moonshot-endpoint");
+const moonshotModelInput = byId<HTMLInputElement>("moonshot-model");
+const moonshotSaveButton = byId<HTMLButtonElement>("moonshot-save");
+const moonshotClearButton = byId<HTMLButtonElement>("moonshot-clear");
 const openaiSection = byId<HTMLDivElement>("openai-config");
 const openaiEndpointInput = byId<HTMLInputElement>("openai-endpoint");
 const openaiModelInput = byId<HTMLInputElement>("openai-model");
@@ -47,6 +53,9 @@ const updateProviderVisibility = () => {
   if (!providerSelect) {
     return;
   }
+  if (moonshotSection) {
+    moonshotSection.hidden = providerSelect.value !== "moonshot";
+  }
   if (openaiSection) {
     openaiSection.hidden = providerSelect.value !== "openai";
   }
@@ -68,6 +77,11 @@ const refresh = async () => {
   providerSelect.value = settings.providerId || "gemini";
   updateProviderVisibility();
 
+  if (moonshotEndpointInput && moonshotModelInput) {
+    const moonshotConfig = await readMoonshotConfig();
+    moonshotEndpointInput.value = moonshotConfig.endpointUrl;
+    moonshotModelInput.value = moonshotConfig.modelId;
+  }
   if (openaiEndpointInput && openaiModelInput) {
     const openaiConfig = await readOpenAIConfig();
     openaiEndpointInput.value = openaiConfig.endpointUrl;
@@ -86,13 +100,15 @@ const refresh = async () => {
 
   const availability = await getTranslationAvailability();
   const providerLabel =
-    settings.providerId === "openai"
-      ? "OpenAI"
-      : settings.providerId === "volcengine"
-        ? "Volcengine"
-        : settings.providerId === "zhipu"
-          ? "Zhipu"
-          : "Gemini";
+    settings.providerId === "moonshot"
+      ? "Moonshot"
+      : settings.providerId === "openai"
+        ? "OpenAI"
+        : settings.providerId === "volcengine"
+          ? "Volcengine"
+          : settings.providerId === "zhipu"
+            ? "Zhipu"
+            : "Gemini";
   setStatus(
     `Translation: <strong class="${availability.enabled ? "status-on" : "status-off"}">${
       availability.enabled ? "ON" : "OFF"
@@ -109,6 +125,10 @@ const initialize = () => {
     !apiKeyInput ||
     !saveButton ||
     !clearButton ||
+    !moonshotEndpointInput ||
+    !moonshotModelInput ||
+    !moonshotSaveButton ||
+    !moonshotClearButton ||
     !openaiEndpointInput ||
     !openaiModelInput ||
     !openaiSaveButton ||
@@ -176,6 +196,29 @@ const initialize = () => {
     void (async () => {
       await clearTranslationApiKey();
       apiKeyInput.value = "";
+      await refresh();
+    })();
+  });
+
+  moonshotSaveButton.addEventListener("click", () => {
+    void (async () => {
+      const endpointUrl = moonshotEndpointInput.value.trim();
+      const modelId = moonshotModelInput.value.trim();
+      if (!endpointUrl || !modelId) {
+        setStatus("Enter a Moonshot endpoint URL and model ID first.");
+        return;
+      }
+
+      await writeMoonshotConfig({ endpointUrl, modelId });
+      await refresh();
+    })();
+  });
+
+  moonshotClearButton.addEventListener("click", () => {
+    void (async () => {
+      await clearMoonshotConfig();
+      moonshotEndpointInput.value = "";
+      moonshotModelInput.value = "";
       await refresh();
     })();
   });

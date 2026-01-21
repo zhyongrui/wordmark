@@ -6,11 +6,13 @@ import {
 } from "../../shared/translation/types";
 import { createInMemoryTtlCache, createInSessionDeduper } from "../../shared/translation/cache";
 import { geminiProvider } from "../../shared/translation/providers/gemini";
+import { moonshotProvider } from "../../shared/translation/providers/moonshot";
 import { openaiProvider } from "../../shared/translation/providers/openai";
 import { volcengineProvider } from "../../shared/translation/providers/volcengine";
 import { zhipuProvider } from "../../shared/translation/providers/zhipu";
 import { readTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
+import { getMoonshotConfig } from "../../shared/translation/moonshot";
 import { getOpenAIConfig } from "../../shared/translation/openai";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
@@ -26,6 +28,8 @@ const getProvider = (providerId: string) => {
   switch (providerId) {
     case "gemini":
       return geminiProvider;
+    case "moonshot":
+      return moonshotProvider;
     case "openai":
       return openaiProvider;
     case "volcengine":
@@ -62,6 +66,12 @@ export const handleTranslationRequest = async (
 
   if (settings.providerId === "volcengine") {
     const config = await getVolcengineConfig();
+    if (!config) {
+      return createTranslationError("not_configured");
+    }
+  }
+  if (settings.providerId === "moonshot") {
+    const config = await getMoonshotConfig();
     if (!config) {
       return createTranslationError("not_configured");
     }

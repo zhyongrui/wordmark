@@ -169,10 +169,37 @@
           <label for="translation-provider">Provider</label>
           <select id="translation-provider">
             <option value="gemini">Gemini</option>
+            <option value="moonshot">Moonshot</option>
             <option value="openai">OpenAI</option>
             <option value="volcengine">Volcengine</option>
             <option value="zhipu">Zhipu</option>
           </select>
+        </div>
+
+        <div id="moonshot-config" class="provider-config" hidden>
+          <div class="field">
+            <label for="moonshot-endpoint">Moonshot endpoint URL</label>
+            <input
+              id="moonshot-endpoint"
+              type="text"
+              autocomplete="off"
+              placeholder="https://api.moonshot.cn/v1/chat/completions"
+            />
+          </div>
+
+          <div class="field">
+            <label for="moonshot-model">Moonshot model ID</label>
+            <input id="moonshot-model" type="text" autocomplete="off" placeholder="Enter model ID" />
+          </div>
+
+          <div class="row">
+            <button class="primary" type="button" id="moonshot-save">Save Moonshot config</button>
+            <button type="button" id="moonshot-clear">Clear Moonshot config</button>
+          </div>
+
+          <div class="note">
+            Moonshot configuration is required only when Moonshot is selected. Endpoint URLs must be HTTPS.
+          </div>
         </div>
 
         <div id="openai-config" class="provider-config" hidden>

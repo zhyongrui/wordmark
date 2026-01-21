@@ -1,5 +1,6 @@
 import { hasTranslationApiKey } from "./secrets";
 import { readTranslationSettings } from "./settings";
+import { getMoonshotConfig } from "./moonshot";
 import { getOpenAIConfig } from "./openai";
 import { getVolcengineConfig } from "./volcengine";
 import { getZhipuConfig } from "./zhipu";
@@ -16,6 +17,10 @@ export const getTranslationAvailability = async (): Promise<TranslationAvailabil
 
   if (settings.providerId === "volcengine") {
     const config = await getVolcengineConfig();
+    configured = hasKey && config != null;
+  }
+  if (settings.providerId === "moonshot") {
+    const config = await getMoonshotConfig();
     configured = hasKey && config != null;
   }
   if (settings.providerId === "openai") {
