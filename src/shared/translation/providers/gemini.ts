@@ -5,6 +5,7 @@ import {
   type TranslationRequest,
   type TranslationResponse
 } from "../types";
+import { getGeminiConfig } from "../gemini";
 import type { TranslationProvider } from "./provider";
 
 const DEFAULT_TIMEOUT_MS = 20000;
@@ -26,7 +27,7 @@ const GEMINI_MODEL_IDS = [
   "gemini-pro"
 ] as const;
 
-let cachedModelSelection: { baseUrl: (typeof GEMINI_BASE_URLS)[number]; modelId: string } | null = null;
+let cachedModelSelection: { baseUrl: string; modelId: string } | null = null;
 
 const toEndpointLabel = (baseUrl: string, modelId: string): string => {
   try {
@@ -275,8 +276,9 @@ export const geminiProvider: TranslationProvider = {
       let lastEndpoint: string | null = null;
       let lastErrorSnippet: string | null = null;
       const callGenerateContent = async (
-        baseUrl: (typeof GEMINI_BASE_URLS)[number],
-        modelId: string
+        baseUrl: string,
+        modelId: string,
+        options?: { cache?: boolean }
       ): Promise<TranslationResponse | "not_found"> => {
         const url = `${baseUrl}/models/${modelId}:generateContent?key=${encodeURIComponent(apiKey)}`;
         const endpointLabel = toEndpointLabel(baseUrl, modelId);
@@ -314,13 +316,33 @@ export const geminiProvider: TranslationProvider = {
           return createTranslationError("provider_error", "Translation unavailable (unexpected provider response).");
         }
 
-        cachedModelSelection = { baseUrl, modelId };
+        if (options?.cache !== false) {
+          cachedModelSelection = { baseUrl, modelId };
+        }
         return {
           ok: true,
           translatedWord: parsed.translatedWord,
           translatedDefinition: parsed.translatedDefinition ?? null
         };
       };
+
+      const overrideConfig = await getGeminiConfig();
+      if (overrideConfig) {
+        const overrideAttempt = await callGenerateContent(
+          overrideConfig.endpointUrl,
+          overrideConfig.modelId,
+          { cache: false }
+        );
+        if (overrideAttempt === "not_found") {
+          const endpoint = lastEndpoint ? ` via ${lastEndpoint}` : "";
+          const details = lastErrorSnippet ? ` Details: ${lastErrorSnippet}` : "";
+          return createTranslationError(
+            "provider_error",
+            `Translation unavailable (HTTP ${lastHttpStatus ?? 404})${endpoint}.${details} Check API key, model ID, and API access.`
+          );
+        }
+        return overrideAttempt;
+      }
 
       const cached = cachedModelSelection;
       if (cached) {
@@ -339,9 +361,7 @@ export const geminiProvider: TranslationProvider = {
         return attempt;
       }
 
-      const discoverModel = async (
-        baseUrl: (typeof GEMINI_BASE_URLS)[number]
-      ): Promise<string | null> => {
+      const discoverModel = async (baseUrl: string): Promise<string | null> => {
         const url = `${baseUrl}/models?key=${encodeURIComponent(apiKey)}`;
         const response = await fetch(url, { method: "GET", signal: controller.signal });
         if (!response.ok) {

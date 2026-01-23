@@ -1,6 +1,12 @@
 import { clearTranslationApiKey, setTranslationApiKey } from "../shared/translation/secrets";
 import { updateTranslationSettings, readTranslationSettings } from "../shared/translation/settings";
 import { getTranslationAvailability } from "../shared/translation/status";
+import {
+  clearGeminiConfig,
+  getGeminiConfig,
+  readGeminiConfig,
+  writeGeminiConfig
+} from "../shared/translation/gemini";
 import { clearDeepSeekConfig, readDeepSeekConfig, writeDeepSeekConfig } from "../shared/translation/deepseek";
 import { clearMoonshotConfig, readMoonshotConfig, writeMoonshotConfig } from "../shared/translation/moonshot";
 import { clearOpenAIConfig, readOpenAIConfig, writeOpenAIConfig } from "../shared/translation/openai";
@@ -23,6 +29,11 @@ const saveButton = byId<HTMLButtonElement>("translation-save");
 const clearButton = byId<HTMLButtonElement>("translation-clear");
 const statusEl = byId<HTMLDivElement>("translation-status");
 const shortcutButton = byId<HTMLButtonElement>("shortcut-open");
+const geminiSection = byId<HTMLDivElement>("gemini-config");
+const geminiEndpointInput = byId<HTMLInputElement>("gemini-endpoint");
+const geminiModelInput = byId<HTMLInputElement>("gemini-model");
+const geminiSaveButton = byId<HTMLButtonElement>("gemini-save");
+const geminiClearButton = byId<HTMLButtonElement>("gemini-clear");
 const deepseekSection = byId<HTMLDivElement>("deepseek-config");
 const deepseekEndpointInput = byId<HTMLInputElement>("deepseek-endpoint");
 const deepseekModelInput = byId<HTMLInputElement>("deepseek-model");
@@ -65,6 +76,9 @@ const updateProviderVisibility = () => {
   if (!providerSelect) {
     return;
   }
+  if (geminiSection) {
+    geminiSection.hidden = providerSelect.value !== "gemini";
+  }
   if (deepseekSection) {
     deepseekSection.hidden = providerSelect.value !== "deepseek";
   }
@@ -95,6 +109,11 @@ const refresh = async () => {
   providerSelect.value = settings.providerId || "gemini";
   updateProviderVisibility();
 
+  if (geminiEndpointInput && geminiModelInput) {
+    const geminiConfig = await readGeminiConfig();
+    geminiEndpointInput.value = geminiConfig.endpointUrl;
+    geminiModelInput.value = geminiConfig.modelId;
+  }
   if (deepseekEndpointInput && deepseekModelInput) {
     const deepseekConfig = await readDeepSeekConfig();
     deepseekEndpointInput.value = deepseekConfig.endpointUrl;
@@ -141,12 +160,21 @@ const refresh = async () => {
               : settings.providerId === "zhipu"
                 ? "Zhipu"
                 : "Gemini";
+  let overrideStatus = "";
+  if (settings.providerId === "gemini") {
+    const geminiConfig = await getGeminiConfig();
+    const overrideActive = geminiConfig != null;
+    overrideStatus = ` • Gemini override: <strong class="${overrideActive ? "status-on" : "status-off"}">${
+      overrideActive ? "active" : "inactive"
+    }</strong>`;
+  }
+
   setStatus(
     `Translation: <strong class="${availability.enabled ? "status-on" : "status-off"}">${
       availability.enabled ? "ON" : "OFF"
     }</strong> • Provider: <strong>${providerLabel}</strong> • Config: <strong class="${
       availability.configured ? "status-on" : "status-off"
-    }">${availability.configured ? "configured" : "not configured"}</strong>`
+    }">${availability.configured ? "configured" : "not configured"}</strong>${overrideStatus}`
   );
 };
 
@@ -157,6 +185,10 @@ const initialize = () => {
     !apiKeyInput ||
     !saveButton ||
     !clearButton ||
+    !geminiEndpointInput ||
+    !geminiModelInput ||
+    !geminiSaveButton ||
+    !geminiClearButton ||
     !deepseekEndpointInput ||
     !deepseekModelInput ||
     !deepseekSaveButton ||
@@ -236,6 +268,29 @@ const initialize = () => {
     void (async () => {
       await clearTranslationApiKey();
       apiKeyInput.value = "";
+      await refresh();
+    })();
+  });
+
+  geminiSaveButton.addEventListener("click", () => {
+    void (async () => {
+      const endpointUrl = geminiEndpointInput.value.trim();
+      const modelId = geminiModelInput.value.trim();
+      if (!endpointUrl || !modelId) {
+        setStatus("Enter a Gemini base endpoint URL and model ID first.");
+        return;
+      }
+
+      await writeGeminiConfig({ endpointUrl, modelId });
+      await refresh();
+    })();
+  });
+
+  geminiClearButton.addEventListener("click", () => {
+    void (async () => {
+      await clearGeminiConfig();
+      geminiEndpointInput.value = "";
+      geminiModelInput.value = "";
       await refresh();
     })();
   });

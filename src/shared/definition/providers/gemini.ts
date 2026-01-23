@@ -6,6 +6,7 @@ import {
   type DefinitionResponse
 } from "../types";
 import { sanitizeEnglishDefinitionText } from "../sanitize";
+import { getGeminiConfig } from "../../translation/gemini";
 import type { DefinitionProvider } from "./provider";
 
 const DEFAULT_TIMEOUT_MS = 20000;
@@ -27,7 +28,7 @@ const GEMINI_MODEL_IDS = [
   "gemini-pro"
 ] as const;
 
-let cachedModelSelection: { baseUrl: (typeof GEMINI_BASE_URLS)[number]; modelId: string } | null = null;
+let cachedModelSelection: { baseUrl: string; modelId: string } | null = null;
 
 const toEndpointLabel = (baseUrl: string, modelId: string): string => {
   try {
@@ -200,8 +201,9 @@ export const geminiDefinitionProvider: DefinitionProvider = {
       let lastErrorSnippet: string | null = null;
 
       const callGenerateContent = async (
-        baseUrl: (typeof GEMINI_BASE_URLS)[number],
-        modelId: string
+        baseUrl: string,
+        modelId: string,
+        options?: { cache?: boolean }
       ): Promise<DefinitionResponse | "not_found"> => {
         const url = `${baseUrl}/models/${modelId}:generateContent?key=${encodeURIComponent(apiKey)}`;
         const endpointLabel = toEndpointLabel(baseUrl, modelId);
@@ -239,9 +241,29 @@ export const geminiDefinitionProvider: DefinitionProvider = {
           return createDefinitionError("provider_error", "Definition unavailable (empty provider response).");
         }
 
-        cachedModelSelection = { baseUrl, modelId };
+        if (options?.cache !== false) {
+          cachedModelSelection = { baseUrl, modelId };
+        }
         return { ok: true, definitionEn: sanitized };
       };
+
+      const overrideConfig = await getGeminiConfig();
+      if (overrideConfig) {
+        const overrideAttempt = await callGenerateContent(
+          overrideConfig.endpointUrl,
+          overrideConfig.modelId,
+          { cache: false }
+        );
+        if (overrideAttempt === "not_found") {
+          const endpoint = lastEndpoint ? ` via ${lastEndpoint}` : "";
+          const details = lastErrorSnippet ? ` Details: ${lastErrorSnippet}` : "";
+          return createDefinitionError(
+            "provider_error",
+            `Definition unavailable (HTTP ${lastHttpStatus ?? 404})${endpoint}.${details} Check API key, model ID, and API access.`
+          );
+        }
+        return overrideAttempt;
+      }
 
       const cached = cachedModelSelection;
       if (cached) {
@@ -260,7 +282,7 @@ export const geminiDefinitionProvider: DefinitionProvider = {
         return attempt;
       }
 
-      const discoverModel = async (baseUrl: (typeof GEMINI_BASE_URLS)[number]): Promise<string | null> => {
+      const discoverModel = async (baseUrl: string): Promise<string | null> => {
         const url = `${baseUrl}/models?key=${encodeURIComponent(apiKey)}`;
         const response = await fetch(url, { method: "GET", signal: controller.signal });
         if (!response.ok) {

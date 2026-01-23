@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { geminiProvider } from "../../../src/shared/translation/providers/gemini";
+import { clearGeminiConfig, writeGeminiConfig } from "../../../src/shared/translation/gemini";
 
 describe("gemini translation provider", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await clearGeminiConfig();
     vi.unstubAllGlobals();
   });
 
@@ -64,6 +66,53 @@ describe("gemini translation provider", () => {
     if (response.ok) {
       expect(response.translatedWord).toBe("你好");
       expect(response.translatedDefinition).toBe("问候语。");
+    }
+  });
+
+  it("uses configured endpoint and model when override is saved", async () => {
+    await writeGeminiConfig({
+      endpointUrl: "https://proxy.example.com/v1beta",
+      modelId: "gemini-test-model"
+    });
+
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe(
+        "https://proxy.example.com/v1beta/models/gemini-test-model:generateContent?key=test-key"
+      );
+      expect(init?.method).toBe("POST");
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      translatedWord: "你好"
+                    })
+                  }
+                ]
+              }
+            }
+          ]
+        })
+      } as unknown as Response;
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await geminiProvider.translate(
+      { word: "hello", definition: null, targetLang: "zh" },
+      "test-key"
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(response.ok).toBe(true);
+    if (response.ok) {
+      expect(response.translatedWord).toBe("你好");
     }
   });
 

@@ -178,6 +178,32 @@
           </select>
         </div>
 
+        <div id="gemini-config" class="provider-config" hidden>
+          <div class="field">
+            <label for="gemini-endpoint">Gemini base endpoint URL</label>
+            <input
+              id="gemini-endpoint"
+              type="text"
+              autocomplete="off"
+              placeholder="https://generativelanguage.googleapis.com/v1beta"
+            />
+          </div>
+
+          <div class="field">
+            <label for="gemini-model">Gemini model ID</label>
+            <input id="gemini-model" type="text" autocomplete="off" placeholder="gemini-2.5-flash" />
+          </div>
+
+          <div class="row">
+            <button class="primary" type="button" id="gemini-save">Save Gemini config</button>
+            <button type="button" id="gemini-clear">Clear Gemini config</button>
+          </div>
+
+          <div class="note">
+            Gemini configuration is optional. It applies only when both fields are set; otherwise WordMark uses the built-in endpoints and automatic model selection. Endpoint URLs must be HTTPS.
+          </div>
+        </div>
+
         <div id="deepseek-config" class="provider-config" hidden>
           <div class="field">
             <label for="deepseek-endpoint">DeepSeek endpoint URL</label>
