@@ -1,8 +1,12 @@
 export const TRANSLATION_SECRETS_KEY = "wordmark:translation:secrets";
 
-export type TranslationSecrets = {
-  providerId: string;
+export type TranslationApiKeyEntry = {
   apiKey: string;
+  updatedAt: string;
+};
+
+export type TranslationSecrets = {
+  keys: Record<string, TranslationApiKeyEntry>;
 };
 
 type StorageArea = {
@@ -10,11 +14,17 @@ type StorageArea = {
   set: (items: Record<string, unknown>) => Promise<void> | void;
 };
 
-type TranslationSecretsRecord = TranslationSecrets & {
-  updatedAt: string;
+type TranslationSecretsRecord = TranslationSecrets;
+
+type LegacyTranslationSecretsRecord = {
+  providerId?: unknown;
+  apiKey?: unknown;
+  updatedAt?: unknown;
 };
 
-const memoryStore: { data: TranslationSecretsRecord | null } = { data: null };
+const defaultSecrets: TranslationSecrets = { keys: {} };
+
+const memoryStore: { data: TranslationSecretsRecord } = { data: defaultSecrets };
 
 const getStorageArea = (): StorageArea | null => {
   const chromeRef = (globalThis as { chrome?: { storage?: { local?: StorageArea } } }).chrome;
@@ -61,68 +71,108 @@ const writeToChrome = async (storage: StorageArea, payload: TranslationSecretsRe
   });
 };
 
-const parseSecrets = (input: unknown): TranslationSecretsRecord | null => {
+const parseSecrets = (
+  input: unknown
+): { secrets: TranslationSecretsRecord; needsMigration: boolean } => {
   if (!input || typeof input !== "object") {
-    return null;
+    return { secrets: defaultSecrets, needsMigration: false };
   }
 
-  const providerIdRaw = (input as { providerId?: unknown }).providerId;
-  const apiKeyRaw = (input as { apiKey?: unknown }).apiKey;
-  const updatedAtRaw = (input as { updatedAt?: unknown }).updatedAt;
+  if ("keys" in input) {
+    const keysRaw = (input as { keys?: unknown }).keys;
+    if (!keysRaw || typeof keysRaw !== "object") {
+      return { secrets: defaultSecrets, needsMigration: false };
+    }
 
-  if (typeof providerIdRaw !== "string" || typeof apiKeyRaw !== "string") {
-    return null;
+    const keys: Record<string, TranslationApiKeyEntry> = {};
+    for (const [providerId, entry] of Object.entries(keysRaw as Record<string, unknown>)) {
+      if (!entry || typeof entry !== "object") {
+        continue;
+      }
+      const apiKeyRaw = (entry as { apiKey?: unknown }).apiKey;
+      const updatedAtRaw = (entry as { updatedAt?: unknown }).updatedAt;
+      if (typeof apiKeyRaw !== "string" || !apiKeyRaw.trim()) {
+        continue;
+      }
+      keys[providerId] = {
+        apiKey: apiKeyRaw,
+        updatedAt: typeof updatedAtRaw === "string" ? updatedAtRaw : new Date(0).toISOString()
+      };
+    }
+
+    return { secrets: { keys }, needsMigration: false };
   }
 
-  return {
-    providerId: providerIdRaw,
-    apiKey: apiKeyRaw,
-    updatedAt: typeof updatedAtRaw === "string" ? updatedAtRaw : new Date(0).toISOString()
-  };
+  const legacy = input as LegacyTranslationSecretsRecord;
+  if (typeof legacy.providerId === "string" && typeof legacy.apiKey === "string" && legacy.apiKey.trim()) {
+    return {
+      secrets: {
+        keys: {
+          [legacy.providerId]: {
+            apiKey: legacy.apiKey,
+            updatedAt: typeof legacy.updatedAt === "string" ? legacy.updatedAt : new Date(0).toISOString()
+          }
+        }
+      },
+      needsMigration: true
+    };
+  }
+
+  return { secrets: defaultSecrets, needsMigration: false };
 };
 
-export const readTranslationSecrets = async (): Promise<TranslationSecrets | null> => {
+export const readTranslationSecrets = async (): Promise<TranslationSecrets> => {
   const storage = getStorageArea();
   if (!storage) {
     return memoryStore.data;
   }
 
   const result = await readFromChrome(storage);
-  return parseSecrets(result[TRANSLATION_SECRETS_KEY]);
+  const parsed = parseSecrets(result[TRANSLATION_SECRETS_KEY]);
+  if (parsed.needsMigration) {
+    await writeToChrome(storage, parsed.secrets);
+  }
+  return parsed.secrets;
 };
 
 export const setTranslationApiKey = async (providerId: string, apiKey: string): Promise<void> => {
-  const payload: TranslationSecretsRecord = {
-    providerId,
-    apiKey,
-    updatedAt: new Date().toISOString()
+  const current = await readTranslationSecrets();
+  const next: TranslationSecretsRecord = {
+    keys: {
+      ...current.keys,
+      [providerId]: { apiKey, updatedAt: new Date().toISOString() }
+    }
   };
 
   const storage = getStorageArea();
   if (!storage) {
-    memoryStore.data = payload;
+    memoryStore.data = next;
     return;
   }
 
-  await writeToChrome(storage, payload);
+  await writeToChrome(storage, next);
 };
 
-export const clearTranslationApiKey = async (): Promise<void> => {
+export const clearTranslationApiKey = async (providerId: string): Promise<void> => {
+  const current = await readTranslationSecrets();
+  const next: TranslationSecretsRecord = { keys: { ...current.keys } };
+  delete next.keys[providerId];
+
   const storage = getStorageArea();
   if (!storage) {
-    memoryStore.data = null;
+    memoryStore.data = next;
     return;
   }
 
-  await writeToChrome(storage, null);
+  await writeToChrome(storage, next);
 };
 
-export const getTranslationApiKey = async (): Promise<string | null> => {
+export const getTranslationApiKey = async (providerId: string): Promise<string | null> => {
   const secrets = await readTranslationSecrets();
-  const apiKey = secrets?.apiKey?.trim();
+  const apiKey = secrets.keys[providerId]?.apiKey?.trim();
   return apiKey ? apiKey : null;
 };
 
-export const hasTranslationApiKey = async (): Promise<boolean> => {
-  return (await getTranslationApiKey()) != null;
+export const hasTranslationApiKey = async (providerId: string): Promise<boolean> => {
+  return (await getTranslationApiKey(providerId)) != null;
 };

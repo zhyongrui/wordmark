@@ -266,7 +266,7 @@ const initialize = () => {
 
   clearButton.addEventListener("click", () => {
     void (async () => {
-      await clearTranslationApiKey();
+      await clearTranslationApiKey(providerSelect.value);
       apiKeyInput.value = "";
       await refresh();
     })();

@@ -62,7 +62,7 @@ export const handleTranslationRequest = async (
     return createTranslationError("disabled");
   }
 
-  const apiKey = await getTranslationApiKey();
+  const apiKey = await getTranslationApiKey(settings.providerId);
   if (!apiKey) {
     return createTranslationError("not_configured");
   }

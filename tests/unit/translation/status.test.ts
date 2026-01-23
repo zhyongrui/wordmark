@@ -45,7 +45,7 @@ describe("translation availability helper", () => {
   });
 
   it("reports configured=false when enabled but no API key", async () => {
-    await clearTranslationApiKey();
+    await clearTranslationApiKey("gemini");
     await updateTranslationSettings({ enabled: true, providerId: "gemini" });
 
     const status = await getTranslationAvailability();
@@ -58,6 +58,14 @@ describe("translation availability helper", () => {
 
     const status = await getTranslationAvailability();
     expect(status).toEqual({ enabled: true, configured: true });
+  });
+
+  it("reports configured=false when selected provider lacks a key even if another key exists", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "openai" });
+    await setTranslationApiKey("gemini", "test-key");
+
+    const status = await getTranslationAvailability();
+    expect(status).toEqual({ enabled: true, configured: false });
   });
 
   it("reports configured=false when DeepSeek is selected without endpoint config", async () => {

@@ -62,7 +62,7 @@ export const handleDefinitionBackfillRequest = async (
     return { ok: false, error: "disabled", message: "Definition backfill is disabled." };
   }
 
-  const apiKey = await getTranslationApiKey();
+  const apiKey = await getTranslationApiKey(settings.providerId);
   if (!apiKey) {
     return { ok: false, error: "not_configured", message: "Definition backfill is not configured." };
   }

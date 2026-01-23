@@ -14,7 +14,7 @@ export type TranslationAvailability = {
 
 export const getTranslationAvailability = async (): Promise<TranslationAvailability> => {
   const settings = await readTranslationSettings();
-  const hasKey = await hasTranslationApiKey();
+  const hasKey = await hasTranslationApiKey(settings.providerId);
   let configured = hasKey;
 
   if (settings.providerId === "volcengine") {

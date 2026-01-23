@@ -55,8 +55,25 @@ describe("background translation handler gating", () => {
   });
 
   it("returns not_configured and does not call fetch when enabled but no API key", async () => {
-    await clearTranslationApiKey();
+    await clearTranslationApiKey("gemini");
     await updateTranslationSettings({ enabled: true, providerId: "gemini" });
+
+    const response = await handleTranslationRequest({
+      word: "hello",
+      definition: "A greeting.",
+      targetLang: "zh"
+    });
+
+    expect(response.ok).toBe(false);
+    if (!response.ok) {
+      expect(response.error).toBe("not_configured");
+    }
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns not_configured when a different provider has the API key", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "gemini" });
+    await setTranslationApiKey("openai", "test-key");
 
     const response = await handleTranslationRequest({
       word: "hello",
