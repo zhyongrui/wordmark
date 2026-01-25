@@ -11,11 +11,11 @@
       <header class="wordmark-header">
         <div class="wordmark-title">WORDMARK</div>
         <div class="wordmark-direction" id="direction-toggle" role="group" aria-label="Word list direction" hidden>
-          <button type="button" class="wordmark-direction-button" data-direction="EN->ZH">EN→ZH</button>
-          <button type="button" class="wordmark-direction-button" data-direction="ZH->EN">ZH→EN</button>
+          <button type="button" class="wordmark-direction-button" data-direction="EN->ZH">EN</button>
+          <span class="wordmark-direction-arrow" aria-hidden="true">→</span>
+          <button type="button" class="wordmark-direction-button" data-direction="ZH->EN">ZH</button>
         </div>
         <div class="wordmark-header-right">
-          <div class="wordmark-count" id="word-count"></div>
           <button
             id="settings-button"
             class="wordmark-settings"
@@ -39,8 +39,16 @@
         ></button>
       </div>
       <div class="wordmark-search">
-        <label class="wordmark-search-label" for="search-input">Search</label>
-        <input id="search-input" type="search" placeholder="Search words" autocomplete="off" />
+        <div class="wordmark-search-row">
+          <input
+            id="search-input"
+            type="search"
+            placeholder="Search words"
+            autocomplete="off"
+            aria-label="Search"
+          />
+          <div class="wordmark-count wordmark-count-inline" id="word-count"></div>
+        </div>
       </div>
       <div id="word-list" class="wordmark-list"></div>
       <div id="empty-state" class="wordmark-empty" hidden>No words yet.</div>

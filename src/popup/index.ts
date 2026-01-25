@@ -49,7 +49,16 @@ const directionButtons = directionToggle
   ? Array.from(directionToggle.querySelectorAll<HTMLButtonElement>(".wordmark-direction-button"))
   : [];
 
-if (!app || !searchInput || !listEl || !emptyEl || !countEl || !toggleButton || !settingsButton || !directionToggle) {
+if (
+  !app ||
+  !searchInput ||
+  !listEl ||
+  !emptyEl ||
+  !countEl ||
+  !toggleButton ||
+  !settingsButton ||
+  !directionToggle
+) {
   throw new Error("Popup root elements missing.");
 }
 
@@ -81,6 +90,12 @@ const setToggleState = (enabled: boolean) => {
   toggleButton.setAttribute("aria-pressed", String(enabled));
 };
 
+const updateCountVisibility = () => {
+  const hasQuery = searchInput.value.trim().length > 0;
+  const isFocused = document.activeElement === searchInput;
+  countEl.hidden = isFocused || hasQuery;
+};
+
 const getEntryLanguage = (entry: WordEntry): WordLanguage | null => {
   return detectWordLanguage(entry.normalizedWord) ?? detectWordLanguage(entry.displayWord);
 };
@@ -104,7 +119,9 @@ const filterByDirection = (entries: WordEntry[]) => {
 };
 
 const updateDirectionToggle = () => {
-  directionToggle.hidden = translationMode !== "dual";
+  const isDual = translationMode === "dual";
+  directionToggle.hidden = !isDual;
+  directionToggle.dataset.direction = listDirection;
   directionButtons.forEach((button) => {
     const direction = button.dataset.direction;
     button.setAttribute("aria-pressed", String(direction === listDirection));
@@ -119,6 +136,7 @@ const renderList = () => {
 
   listEl.textContent = "";
   countEl.textContent = `${directionFiltered.length} WORDS`;
+  updateCountVisibility();
 
   if (sorted.length === 0) {
     const message = query.trim() ? "No matches found." : "No words yet.";
@@ -222,6 +240,14 @@ const refreshPreferences = async () => {
 
 searchInput.addEventListener("input", () => {
   renderList();
+});
+
+searchInput.addEventListener("focus", () => {
+  updateCountVisibility();
+});
+
+searchInput.addEventListener("blur", () => {
+  updateCountVisibility();
 });
 
 toggleButton.addEventListener("click", async () => {

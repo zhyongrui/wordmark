@@ -27,45 +27,74 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #5a5144;
-  gap: 8px;
+  gap: 4px;
 }
 
 .wordmark-title {
   font-weight: 600;
+  grid-column: 1;
 }
 
 .wordmark-header-right {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  grid-column: 3;
+  justify-self: end;
 }
 
 .wordmark-direction {
-  justify-self: center;
+  grid-column: 2;
+  justify-self: end;
   display: inline-flex;
   align-items: center;
+  gap: 2px;
   border: 1px solid #d0c5b6;
   border-radius: 999px;
   overflow: hidden;
   background: #ffffff;
+  padding: 2px 4px;
+  margin-right: -4px;
 }
 
 .wordmark-direction-button {
   border: none;
   background: transparent;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 2px 6px;
+  font-size: 10px;
+  line-height: 1.2;
   color: #5a5144;
   cursor: pointer;
+  letter-spacing: 0.08em;
 }
 
 .wordmark-direction-button[aria-pressed="true"] {
   background: #c7b08a;
   color: #1f1a14;
+  border-radius: 999px;
+}
+
+.wordmark-direction-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #5a5144;
+  transition: transform 0.15s ease;
+}
+
+.wordmark-direction[data-direction="ZH->EN"] .wordmark-direction-arrow {
+  transform: rotate(180deg);
 }
 
 .wordmark-count {
   text-align: right;
+  font-size: 12px;
+  color: #5a5144;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .wordmark-settings {
@@ -93,6 +122,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.wordmark-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .wordmark-toggle {
@@ -165,11 +200,29 @@ body {
   box-sizing: border-box;
   border: 1px solid #e0d6c8;
   border-radius: 6px;
-  padding: 6px 8px;
+  padding: 6px 76px 6px 8px;
   font-size: 13px;
   height: var(--control-height);
   background: #ffffff;
   color: #1f1a14;
+  flex: 1;
+}
+
+.wordmark-search input:focus,
+.wordmark-search input:not(:placeholder-shown) {
+  padding-right: 8px;
+}
+
+.wordmark-search input::-webkit-search-cancel-button {
+  margin-right: 0;
+}
+
+.wordmark-count-inline {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .wordmark-list {
