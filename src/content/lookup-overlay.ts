@@ -1,3 +1,5 @@
+import type { WordLanguage } from "../shared/word/normalize";
+
 type OverlayContent = {
   word: string;
   definition: string | null;
@@ -635,13 +637,14 @@ const normalizeEnglishDefinition = (definition: string | null): string => {
   return value ? value : "Definition unavailable.";
 };
 
-export const resetTranslationUi = (englishDefinition: string | null) => {
+export const resetTranslationUi = (englishDefinition: string | null, sourceLang: WordLanguage = "en") => {
   const overlay = getExistingOverlay();
   if (!overlay) {
     return;
   }
 
-  overlay.definition.textContent = normalizeEnglishDefinition(englishDefinition);
+  overlay.definition.textContent =
+    sourceLang === "zh" ? "Translation unavailable." : normalizeEnglishDefinition(englishDefinition);
   overlay.translation.hidden = true;
   overlay.translationWord.textContent = "";
   overlay.translationDefinitionLabel.style.display = "none";
@@ -650,9 +653,20 @@ export const resetTranslationUi = (englishDefinition: string | null) => {
   overlay.translationStatus.textContent = "";
 };
 
-export const showTranslationLoading = () => {
+export const showTranslationLoading = (sourceLang: WordLanguage = "en") => {
   const overlay = getExistingOverlay();
   if (!overlay) {
+    return;
+  }
+
+  if (sourceLang === "zh") {
+    overlay.translation.hidden = true;
+    overlay.translationWord.textContent = "";
+    overlay.translationDefinitionLabel.style.display = "none";
+    overlay.translationDefinition.style.display = "none";
+    overlay.translationDefinition.textContent = "";
+    overlay.translationStatus.textContent = "";
+    overlay.definition.textContent = "Translating…";
     return;
   }
 
@@ -731,9 +745,24 @@ export const mapTranslationOverlayModel = (input: {
   };
 };
 
-export const showTranslationResult = (result: { translatedWord: string; translatedDefinition?: string | null }) => {
+export const showTranslationResult = (
+  result: { translatedWord: string; translatedDefinition?: string | null },
+  sourceLang: WordLanguage = "en"
+) => {
   const overlay = getExistingOverlay();
   if (!overlay) {
+    return;
+  }
+
+  if (sourceLang === "zh") {
+    const translatedWord = result.translatedWord.trim();
+    overlay.translation.hidden = true;
+    overlay.translationWord.textContent = "";
+    overlay.translationDefinitionLabel.style.display = "none";
+    overlay.translationDefinition.style.display = "none";
+    overlay.translationDefinition.textContent = "";
+    overlay.translationStatus.textContent = "";
+    overlay.definition.textContent = translatedWord || "Translation unavailable.";
     return;
   }
 
@@ -765,9 +794,22 @@ export const showTranslationResult = (result: { translatedWord: string; translat
   overlay.translationStatus.textContent = "";
 };
 
-export const showTranslationError = (message: string) => {
+export const showTranslationError = (message: string, sourceLang: WordLanguage = "en") => {
   const overlay = getExistingOverlay();
   if (!overlay) {
+    return;
+  }
+
+  if (sourceLang === "zh") {
+    const trimmed = message.trim();
+    const includeRetryHint = !/not configured/i.test(trimmed) && !/shortcut again to retry/i.test(trimmed);
+    overlay.translation.hidden = true;
+    overlay.translationWord.textContent = "";
+    overlay.translationDefinitionLabel.style.display = "none";
+    overlay.translationDefinition.style.display = "none";
+    overlay.translationDefinition.textContent = "";
+    overlay.translationStatus.textContent = "";
+    overlay.definition.textContent = includeRetryHint ? `${trimmed} Press the shortcut again to retry.` : trimmed;
     return;
   }
 
@@ -862,13 +904,15 @@ export const overlayContainsTarget = (target: EventTarget | null) => {
   return overlay.root.contains(target as Node);
 };
 
-export const showLookupOverlay = (content: OverlayContent) => {
+export const showLookupOverlay = (content: OverlayContent & { sourceLang?: WordLanguage }) => {
   ensureStyles();
   ensurePointerTracking();
   bumpAutoCloseIgnore(250);
   const overlay = getOverlay();
+  const sourceLang = content.sourceLang ?? "en";
   overlay.word.textContent = content.word;
-  overlay.definition.textContent = content.definition ?? "Definition unavailable.";
+  overlay.definition.textContent =
+    content.definition ?? (sourceLang === "zh" ? "Translation unavailable." : "Definition unavailable.");
   overlay.status.textContent = content.status ?? "";
   overlay.pronounce.disabled = !content.pronunciationAvailable;
   overlay.pronounce.style.display = content.pronunciationAvailable ? "inline-flex" : "none";

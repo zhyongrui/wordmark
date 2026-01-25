@@ -1,4 +1,4 @@
-export type TranslationTargetLang = "zh";
+export type TranslationTargetLang = "zh" | "en";
 
 export type TranslationRequest = {
   word: string;

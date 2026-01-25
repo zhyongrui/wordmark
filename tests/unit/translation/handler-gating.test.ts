@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleTranslationRequest } from "../../../src/background/handlers/translation";
-import { updateTranslationSettings } from "../../../src/shared/translation/settings";
+import { readTranslationSettings, updateTranslationSettings } from "../../../src/shared/translation/settings";
 import { clearTranslationApiKey, setTranslationApiKey } from "../../../src/shared/translation/secrets";
 import { clearDeepSeekConfig } from "../../../src/shared/translation/deepseek";
 import { clearMoonshotConfig } from "../../../src/shared/translation/moonshot";
@@ -69,6 +69,22 @@ describe("background translation handler gating", () => {
       expect(response.error).toBe("not_configured");
     }
     expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("updates lastDirection on translation trigger even when not configured", async () => {
+    await clearTranslationApiKey("gemini");
+    await updateTranslationSettings({ enabled: true, providerId: "gemini", lastDirection: "EN->ZH" });
+
+    const response = await handleTranslationRequest({
+      word: "你好",
+      definition: null,
+      targetLang: "en"
+    });
+
+    expect(response.ok).toBe(false);
+
+    const settings = await readTranslationSettings();
+    expect(settings.lastDirection).toBe("ZH->EN");
   });
 
   it("returns not_configured when a different provider has the API key", async () => {

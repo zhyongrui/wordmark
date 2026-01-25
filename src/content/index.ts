@@ -24,6 +24,7 @@ import { createHighlightEngine } from "./highlight";
 import type { Preferences, WordEntry } from "../shared/storage/schema";
 import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/translation/settings";
 import type { TranslationResponse } from "../shared/translation/types";
+import { detectWordLanguage, type WordLanguage } from "../shared/word/normalize";
 
 type LookupResponse =
   | {
@@ -51,7 +52,7 @@ let highlightEnabled = true;
 let lookupSessionId = 0;
 let translationEnabled = false;
 let latestLookup:
-  | { sessionId: number; word: string; definition: string | null }
+  | { sessionId: number; word: string; definition: string | null; language: WordLanguage }
   | null = null;
 
 const getDefinitionBackfillErrorMessage = (error: Exclude<DefinitionBackfillResponse, { ok: true }>["error"]) => {
@@ -91,8 +92,43 @@ const sendMessage = async <T>(message: unknown): Promise<T | null> => {
 };
 
 const triggerLookup = async () => {
-  const translationSettingsPromise = readTranslationSettings().catch(() => ({ enabled: false, providerId: "gemini" }));
+  const translationSettingsPromise = readTranslationSettings().catch(() => ({
+    enabled: false,
+    providerId: "gemini",
+    mode: "single",
+    singleDirection: "EN->ZH",
+    dualPair: "EN<->ZH",
+    lastDirection: "EN->ZH"
+  }));
   const selection = window.getSelection()?.toString() ?? "";
+  const selectionLanguage = detectWordLanguage(selection);
+  if (!selectionLanguage) {
+    ensureOverlayAutoClose();
+    showNotice("Select a single word to look up.");
+    return;
+  }
+
+  const settings = await translationSettingsPromise;
+  translationEnabled = Boolean(settings.enabled);
+  if (selectionLanguage === "zh" && !translationEnabled) {
+    ensureOverlayAutoClose();
+    showNotice("Enable translation to look up Chinese words.");
+    return;
+  }
+  if (translationEnabled && settings.mode === "single") {
+    const expectsEnglish = settings.singleDirection === "EN->ZH";
+    if (expectsEnglish && selectionLanguage === "zh") {
+      ensureOverlayAutoClose();
+      showNotice("当前为 EN→ZH 模式，请到设置切换为 ZH→EN 或开启双向翻译模式");
+      return;
+    }
+    if (!expectsEnglish && selectionLanguage === "en") {
+      ensureOverlayAutoClose();
+      showNotice("当前为 ZH→EN 模式，请到设置切换为 EN→ZH 或开启双向翻译模式");
+      return;
+    }
+  }
+
   const anchorRect = captureSelectionRect() ?? getCachedSelectionRect();
   const response = await sendMessage<LookupResponse>({
     type: MessageTypes.LookupRequest,
@@ -116,6 +152,7 @@ const triggerLookup = async () => {
     word: entry.displayWord,
     definition: entry.definition,
     pronunciationAvailable: entry.pronunciationAvailable,
+    sourceLang: selectionLanguage,
     anchorRect,
     onPronounce: () => {
       if (!playPronunciation(entry.displayWord)) {
@@ -125,18 +162,26 @@ const triggerLookup = async () => {
     }
   });
 
-  const settings = await translationSettingsPromise;
-  latestLookup = { sessionId, word: entry.displayWord, definition: entry.definition };
-  translationEnabled = Boolean(settings.enabled);
+  latestLookup = {
+    sessionId,
+    word: entry.displayWord,
+    definition: entry.definition,
+    language: selectionLanguage
+  };
   if (translationEnabled) {
-    void requestTranslation(sessionId, entry.displayWord, entry.definition);
-    if (entry.definition == null) {
+    void requestTranslation(sessionId, entry.displayWord, entry.definition, selectionLanguage);
+    if (entry.definition == null && selectionLanguage === "en") {
       void requestDefinitionBackfill(sessionId, entry.displayWord);
     }
   }
 };
 
-const requestTranslation = async (sessionId: number, word: string, definition: string | null) => {
+const requestTranslation = async (
+  sessionId: number,
+  word: string,
+  definition: string | null,
+  language: WordLanguage
+) => {
   if (sessionId !== lookupSessionId) {
     return;
   }
@@ -145,8 +190,8 @@ const requestTranslation = async (sessionId: number, word: string, definition: s
   }
 
   bumpAutoCloseIgnore(250);
-  showTranslationLoading();
-  if (definition == null) {
+  showTranslationLoading(language);
+  if (definition == null && language === "en") {
     showGeneratedDefinitionLoading();
   }
 
@@ -154,8 +199,8 @@ const requestTranslation = async (sessionId: number, word: string, definition: s
     type: MessageTypes.TranslationRequest,
     payload: {
       word,
-      definition,
-      targetLang: "zh"
+      definition: language === "en" ? definition : null,
+      targetLang: language === "en" ? "zh" : "en"
     }
   });
 
@@ -167,24 +212,27 @@ const requestTranslation = async (sessionId: number, word: string, definition: s
   }
 
   if (!response) {
-    showTranslationError("Translation unavailable. Reload the extension and try again.");
+    showTranslationError("Translation unavailable. Reload the extension and try again.", language);
     return;
   }
 
   if (response.ok) {
-    showTranslationResult({
-      translatedWord: response.translatedWord,
-      translatedDefinition: response.translatedDefinition ?? null
-    });
+    showTranslationResult(
+      {
+        translatedWord: response.translatedWord,
+        translatedDefinition: response.translatedDefinition ?? null
+      },
+      language
+    );
     return;
   }
 
   if (response.error === "not_configured") {
-    showTranslationError("Translation not configured. Set an API key in Options.");
+    showTranslationError("Translation not configured. Set an API key in Options.", language);
     return;
   }
 
-  showTranslationError(response.message ?? "Translation unavailable.");
+  showTranslationError(response.message ?? "Translation unavailable.", language);
 };
 
 const requestDefinitionBackfill = async (sessionId: number, word: string) => {
@@ -233,7 +281,7 @@ const syncTranslationEnabledState = async () => {
   translationEnabled = Boolean(settings.enabled);
   const lookup = latestLookup;
   if (!translationEnabled && lookup && lookup.sessionId === lookupSessionId && isOverlayOpen()) {
-    resetTranslationUi(lookup.definition);
+    resetTranslationUi(lookup.definition, lookup.language);
   }
 };
 

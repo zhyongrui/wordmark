@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageTypes } from "../../../src/shared/messages";
 
 let translationEnabled = false;
+let translationMode: "single" | "dual" = "single";
+let singleDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let lastDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
 
 const showLookupOverlay = vi.fn();
 const showTranslationLoading = vi.fn();
@@ -10,7 +13,14 @@ const showGeneratedDefinitionError = vi.fn();
 vi.mock("../../../src/shared/translation/settings", () => {
   return {
     TRANSLATION_SETTINGS_KEY: "wordmark:translation:settings",
-    readTranslationSettings: vi.fn(async () => ({ enabled: translationEnabled, providerId: "gemini" })),
+    readTranslationSettings: vi.fn(async () => ({
+      enabled: translationEnabled,
+      providerId: "gemini",
+      mode: translationMode,
+      singleDirection,
+      dualPair: "EN<->ZH",
+      lastDirection
+    })),
     updateTranslationSettings: vi.fn()
   };
 });
@@ -127,6 +137,9 @@ beforeEach(() => {
   showLookupOverlay.mockClear();
   showTranslationLoading.mockClear();
   showGeneratedDefinitionError.mockClear();
+  translationMode = "single";
+  singleDirection = "EN->ZH";
+  lastDirection = "EN->ZH";
   installMinimalDom();
 });
 
@@ -164,4 +177,3 @@ describe("Spec 003 definition backfill fallback UI", () => {
     expect(message).toBe("Definition unavailable.");
   });
 });
-

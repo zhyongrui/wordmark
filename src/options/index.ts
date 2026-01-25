@@ -23,6 +23,10 @@ const byId = <T extends HTMLElement>(id: string): T | null => {
 };
 
 const enabledCheckbox = byId<HTMLInputElement>("translation-enabled");
+const modeSingleButton = byId<HTMLButtonElement>("translation-mode-single");
+const modeDualButton = byId<HTMLButtonElement>("translation-mode-dual");
+const directionSelect = byId<HTMLSelectElement>("translation-direction");
+const directionHint = byId<HTMLSpanElement>("translation-direction-hint");
 const providerSelect = byId<HTMLSelectElement>("translation-provider");
 const apiKeyInput = byId<HTMLInputElement>("translation-api-key");
 const saveButton = byId<HTMLButtonElement>("translation-save");
@@ -72,6 +76,55 @@ const setStatus = (message: string) => {
   statusEl.innerHTML = message;
 };
 
+let currentMode: "single" | "dual" = "single";
+
+const setDirectionOptions = (mode: "single" | "dual", settings: { singleDirection: string; dualPair: string }) => {
+  if (!directionSelect) {
+    return;
+  }
+  const options =
+    mode === "single"
+      ? [
+          { value: "EN->ZH", label: "EN→ZH" },
+          { value: "ZH->EN", label: "ZH→EN" }
+        ]
+      : [{ value: "EN<->ZH", label: "EN↔ZH" }];
+
+  directionSelect.textContent = "";
+  options.forEach((option) => {
+    const el = document.createElement("option");
+    el.value = option.value;
+    el.textContent = option.label;
+    directionSelect.appendChild(el);
+  });
+
+  directionSelect.value = mode === "single" ? settings.singleDirection : settings.dualPair;
+  if (directionHint) {
+    directionHint.hidden = mode !== "dual";
+  }
+};
+
+const updateModeUi = (mode: "single" | "dual") => {
+  if (modeSingleButton) {
+    modeSingleButton.setAttribute("aria-pressed", String(mode === "single"));
+  }
+  if (modeDualButton) {
+    modeDualButton.setAttribute("aria-pressed", String(mode === "dual"));
+  }
+};
+
+const setModeControlsDisabled = (disabled: boolean) => {
+  if (modeSingleButton) {
+    modeSingleButton.disabled = disabled;
+  }
+  if (modeDualButton) {
+    modeDualButton.disabled = disabled;
+  }
+  if (directionSelect) {
+    directionSelect.disabled = disabled;
+  }
+};
+
 const updateProviderVisibility = () => {
   if (!providerSelect) {
     return;
@@ -107,6 +160,10 @@ const refresh = async () => {
   const settings = await readTranslationSettings();
   enabledCheckbox.checked = settings.enabled;
   providerSelect.value = settings.providerId || "gemini";
+  currentMode = settings.mode;
+  updateModeUi(settings.mode);
+  setDirectionOptions(settings.mode, settings);
+  setModeControlsDisabled(!settings.enabled);
   updateProviderVisibility();
 
   if (geminiEndpointInput && geminiModelInput) {
@@ -181,6 +238,10 @@ const refresh = async () => {
 const initialize = () => {
   if (
     !enabledCheckbox ||
+    !modeSingleButton ||
+    !modeDualButton ||
+    !directionSelect ||
+    !directionHint ||
     !providerSelect ||
     !apiKeyInput ||
     !saveButton ||
@@ -238,6 +299,31 @@ const initialize = () => {
   enabledCheckbox.addEventListener("change", () => {
     void (async () => {
       await updateTranslationSettings({ enabled: enabledCheckbox.checked });
+      await refresh();
+    })();
+  });
+
+  modeSingleButton.addEventListener("click", () => {
+    void (async () => {
+      await updateTranslationSettings({ mode: "single" });
+      await refresh();
+    })();
+  });
+
+  modeDualButton.addEventListener("click", () => {
+    void (async () => {
+      await updateTranslationSettings({ mode: "dual" });
+      await refresh();
+    })();
+  });
+
+  directionSelect.addEventListener("change", () => {
+    void (async () => {
+      if (currentMode === "dual") {
+        await updateTranslationSettings({ dualPair: directionSelect.value });
+      } else {
+        await updateTranslationSettings({ singleDirection: directionSelect.value });
+      }
       await refresh();
     })();
   });

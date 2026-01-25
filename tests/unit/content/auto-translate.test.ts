@@ -2,14 +2,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageTypes } from "../../../src/shared/messages";
 
 let translationEnabled = false;
+let translationMode: "single" | "dual" = "single";
+let singleDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let lastDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
 
 const showLookupOverlay = vi.fn();
 const showTranslationLoading = vi.fn();
+const showNotice = vi.fn();
 
 vi.mock("../../../src/shared/translation/settings", () => {
   return {
     TRANSLATION_SETTINGS_KEY: "wordmark:translation:settings",
-    readTranslationSettings: vi.fn(async () => ({ enabled: translationEnabled, providerId: "gemini" })),
+    readTranslationSettings: vi.fn(async () => ({
+      enabled: translationEnabled,
+      providerId: "gemini",
+      mode: translationMode,
+      singleDirection,
+      dualPair: "EN<->ZH",
+      lastDirection
+    })),
     updateTranslationSettings: vi.fn()
   };
 });
@@ -47,13 +58,13 @@ vi.mock("../../../src/content/lookup-overlay", () => {
     showTranslationLoading,
     showLookupOverlay,
     showTranslationResult: vi.fn(),
-    showNotice: vi.fn()
+    showNotice
   };
 });
 
 const flushPromises = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
-const installMinimalDom = () => {
+const installMinimalDom = (selectionText = "hello") => {
   (globalThis as unknown as { document?: unknown }).document = {
     getElementById: vi.fn(() => null),
     addEventListener: vi.fn(),
@@ -61,7 +72,7 @@ const installMinimalDom = () => {
   };
 
   (globalThis as unknown as { window?: unknown }).window = {
-    getSelection: () => ({ toString: () => "hello", rangeCount: 0, isCollapsed: true }),
+    getSelection: () => ({ toString: () => selectionText, rangeCount: 0, isCollapsed: true }),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn()
   };
@@ -119,6 +130,10 @@ beforeEach(() => {
   vi.resetModules();
   showLookupOverlay.mockClear();
   showTranslationLoading.mockClear();
+  showNotice.mockClear();
+  translationMode = "single";
+  singleDirection = "EN->ZH";
+  lastDirection = "EN->ZH";
   installMinimalDom();
 });
 
@@ -169,5 +184,80 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const types = chromeRuntime.sendMessage.mock.calls.map(([message]) => (message as { type?: string }).type);
     expect(types).toContain(MessageTypes.LookupRequest);
     expect(types).not.toContain(MessageTypes.TranslationRequest);
+  });
+
+  it("routes Chinese selections to English translation", async () => {
+    translationEnabled = true;
+    translationMode = "dual";
+    installMinimalDom("你好");
+
+    const chromeRuntime = installFakeChromeRuntime({
+      onLookup: () => ({
+        ok: true,
+        entry: { displayWord: "你好", definition: null, pronunciationAvailable: true }
+      }),
+      onTranslate: () => ({ ok: true, translatedWord: "hello" })
+    });
+
+    await import("../../../src/content/index");
+
+    chromeRuntime.dispatchLookupTrigger();
+    await flushPromises();
+
+    const translationCall = chromeRuntime.sendMessage.mock.calls.find(
+      ([message]) => (message as { type?: string }).type === MessageTypes.TranslationRequest
+    );
+    expect(translationCall).toBeTruthy();
+    const payload = translationCall?.[0] as { payload?: { targetLang?: string; definition?: string | null } };
+    expect(payload.payload?.targetLang).toBe("en");
+    expect(payload.payload?.definition ?? null).toBeNull();
+  });
+
+  it("blocks Chinese lookups in single EN->ZH mode", async () => {
+    translationEnabled = true;
+    translationMode = "single";
+    singleDirection = "EN->ZH";
+    installMinimalDom("你好");
+
+    const chromeRuntime = installFakeChromeRuntime({
+      onLookup: () => ({
+        ok: true,
+        entry: { displayWord: "你好", definition: null, pronunciationAvailable: true }
+      }),
+      onTranslate: () => ({ ok: false, error: "not_configured" })
+    });
+
+    await import("../../../src/content/index");
+
+    chromeRuntime.dispatchLookupTrigger();
+    await flushPromises();
+
+    const types = chromeRuntime.sendMessage.mock.calls.map(([message]) => (message as { type?: string }).type);
+    expect(types).not.toContain(MessageTypes.LookupRequest);
+    expect(showNotice).toHaveBeenCalledWith("当前为 EN→ZH 模式，请到设置切换为 ZH→EN 或开启双向翻译模式");
+  });
+
+  it("blocks English lookups in single ZH->EN mode", async () => {
+    translationEnabled = true;
+    translationMode = "single";
+    singleDirection = "ZH->EN";
+    installMinimalDom("hello");
+
+    const chromeRuntime = installFakeChromeRuntime({
+      onLookup: () => ({
+        ok: true,
+        entry: { displayWord: "hello", definition: "A greeting.", pronunciationAvailable: true }
+      }),
+      onTranslate: () => ({ ok: false, error: "not_configured" })
+    });
+
+    await import("../../../src/content/index");
+
+    chromeRuntime.dispatchLookupTrigger();
+    await flushPromises();
+
+    const types = chromeRuntime.sendMessage.mock.calls.map(([message]) => (message as { type?: string }).type);
+    expect(types).not.toContain(MessageTypes.LookupRequest);
+    expect(showNotice).toHaveBeenCalledWith("当前为 ZH→EN 模式，请到设置切换为 EN→ZH 或开启双向翻译模式");
   });
 });

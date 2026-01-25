@@ -80,7 +80,7 @@ describe("translation TTL cache (background)", () => {
     await handleTranslationRequest({ word: "hello-cache-hit", definition: "A greeting.", targetLang: "zh" });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(local.set).not.toHaveBeenCalled();
+    expect(local.set).toHaveBeenCalledTimes(2);
   });
 
   it("expires cached responses within 31 minutes", async () => {

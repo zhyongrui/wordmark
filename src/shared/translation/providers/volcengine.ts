@@ -23,19 +23,30 @@ const readErrorSnippet = async (response: Response): Promise<string | null> => {
   }
 };
 
+const getTargetLanguageLabel = (targetLang: TranslationRequest["targetLang"]): string => {
+  return targetLang === "zh" ? "Chinese (Simplified)" : "English";
+};
+
+const getSourceLanguageLabel = (targetLang: TranslationRequest["targetLang"]): string => {
+  return targetLang === "zh" ? "English" : "Chinese";
+};
+
 const buildSystemPrompt = (request: TranslationRequest): string => {
   const definitionText =
     typeof request.definition === "string" && request.definition.trim()
       ? request.definition.trim()
       : null;
 
+  const placeholder = request.targetLang === "zh" ? "<zh>" : "<en>";
   const schema =
     definitionText == null
-      ? '{"translatedWord":"<zh>"}'
-      : '{"translatedWord":"<zh>","translatedDefinition":"<zh>"}';
+      ? `{"translatedWord":"${placeholder}"}`
+      : `{"translatedWord":"${placeholder}","translatedDefinition":"${placeholder}"}`;
 
   return [
-    "Translate the following English content into Chinese (Simplified).",
+    `Translate the following ${getSourceLanguageLabel(request.targetLang)} content into ${getTargetLanguageLabel(
+      request.targetLang
+    )}.`,
     `Return ONLY a valid JSON object matching this schema exactly: ${schema}`,
     "Do not wrap the JSON in Markdown code fences.",
     "Do not include any additional keys."
@@ -159,7 +170,7 @@ export const volcengineProvider: TranslationProvider = {
     options?: { signal?: AbortSignal }
   ): Promise<TranslationResponse> => {
     const { word, definition, targetLang } = request;
-    if (targetLang !== "zh") {
+    if (targetLang !== "zh" && targetLang !== "en") {
       return createTranslationError("provider_error");
     }
 

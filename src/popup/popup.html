@@ -9,7 +9,11 @@
   <body>
     <main id="app">
       <header class="wordmark-header">
-        <div class="wordmark-title">WordMark</div>
+        <div class="wordmark-title">WORDMARK</div>
+        <div class="wordmark-direction" id="direction-toggle" role="group" aria-label="Word list direction" hidden>
+          <button type="button" class="wordmark-direction-button" data-direction="EN->ZH">EN→ZH</button>
+          <button type="button" class="wordmark-direction-button" data-direction="ZH->EN">ZH→EN</button>
+        </div>
         <div class="wordmark-header-right">
           <div class="wordmark-count" id="word-count"></div>
           <button

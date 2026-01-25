@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleTranslationRequest } from "../../../src/background/handlers/translation";
 import { setTranslationApiKey } from "../../../src/shared/translation/secrets";
 import { updateTranslationSettings } from "../../../src/shared/translation/settings";
+import { readStore, recordLookup } from "../../../src/shared/word/store";
 
 const installMockChromeStorage = () => {
   const data: Record<string, unknown> = {};
@@ -82,6 +83,32 @@ describe("background translation handler success/degrade", () => {
     await expect(first).resolves.toMatchObject({ ok: true });
     await expect(second).resolves.toMatchObject({ ok: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores English labels for Chinese source words", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "gemini" });
+    await setTranslationApiKey("gemini", "test-key");
+
+    await recordLookup({
+      normalizedWord: "你好",
+      displayWord: "你好",
+      definition: null,
+      pronunciationAvailable: false
+    });
+
+    const fetchMock = vi.fn(async () => makeGeminiResponse({ translatedWord: "hello" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleTranslationRequest({
+      word: "你好",
+      definition: null,
+      targetLang: "en"
+    });
+
+    expect(response.ok).toBe(true);
+
+    const store = await readStore();
+    expect(store.wordsByKey["你好"]?.wordEn).toBe("hello");
   });
 
   it("maps provider errors to stable error codes", async () => {

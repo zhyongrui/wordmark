@@ -12,7 +12,7 @@ import { openaiProvider } from "../../shared/translation/providers/openai";
 import { qwenProvider } from "../../shared/translation/providers/qwen";
 import { volcengineProvider } from "../../shared/translation/providers/volcengine";
 import { zhipuProvider } from "../../shared/translation/providers/zhipu";
-import { readTranslationSettings } from "../../shared/translation/settings";
+import { readTranslationSettings, updateTranslationSettings } from "../../shared/translation/settings";
 import { getTranslationApiKey } from "../../shared/translation/secrets";
 import { getDeepSeekConfig } from "../../shared/translation/deepseek";
 import { getMoonshotConfig } from "../../shared/translation/moonshot";
@@ -21,7 +21,7 @@ import { getQwenConfig } from "../../shared/translation/qwen";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { normalizeWord } from "../../shared/word/normalize";
-import { updateWordZh } from "../../shared/word/store";
+import { updateWordEn, updateWordZh } from "../../shared/word/store";
 
 export type TranslationRequestPayload = TranslationRequest;
 
@@ -60,6 +60,12 @@ export const handleTranslationRequest = async (
   const settings = await readTranslationSettings();
   if (!settings.enabled) {
     return createTranslationError("disabled");
+  }
+
+  try {
+    await updateTranslationSettings({ lastDirection: payload.targetLang === "zh" ? "EN->ZH" : "ZH->EN" });
+  } catch {
+    // ignore storage errors
   }
 
   const apiKey = await getTranslationApiKey(settings.providerId);
@@ -140,7 +146,11 @@ export const handleTranslationRequest = async (
     const normalizedWord = normalizeWord(request.word);
     if (normalizedWord) {
       try {
-        await updateWordZh(normalizedWord, response.translatedWord);
+        if (request.targetLang === "zh") {
+          await updateWordZh(normalizedWord, response.translatedWord);
+        } else if (request.targetLang === "en") {
+          await updateWordEn(normalizedWord, response.translatedWord);
+        }
       } catch {
         // ignore storage errors
       }

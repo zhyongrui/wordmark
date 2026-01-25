@@ -1,9 +1,10 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type WordEntry = {
   normalizedWord: string;
   displayWord: string;
   wordZh?: string;
+  wordEn?: string;
   queryCount: number;
   lastQueriedAt: string;
   definition?: string | null;

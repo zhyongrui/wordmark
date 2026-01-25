@@ -38,17 +38,36 @@ describe("translation settings", () => {
   it("defaults to enabled=false", async () => {
     const settings = await readTranslationSettings();
     expect(settings.enabled).toBe(false);
+    expect(settings.mode).toBe("single");
+    expect(settings.singleDirection).toBe("EN->ZH");
+    expect(settings.dualPair).toBe("EN<->ZH");
+    expect(settings.lastDirection).toBe("EN->ZH");
   });
 
   it("persists updates and round-trips", async () => {
-    const next = await updateTranslationSettings({ enabled: true, providerId: "gemini" });
+    const next = await updateTranslationSettings({
+      enabled: true,
+      providerId: "gemini",
+      mode: "dual",
+      singleDirection: "ZH->EN",
+      dualPair: "EN<->ZH",
+      lastDirection: "ZH->EN"
+    });
 
     expect(next.enabled).toBe(true);
     expect(next.providerId).toBe("gemini");
+    expect(next.mode).toBe("dual");
+    expect(next.singleDirection).toBe("ZH->EN");
+    expect(next.dualPair).toBe("EN<->ZH");
+    expect(next.lastDirection).toBe("ZH->EN");
 
     const stored = await readTranslationSettings();
     expect(stored.enabled).toBe(true);
     expect(stored.providerId).toBe("gemini");
+    expect(stored.mode).toBe("dual");
+    expect(stored.singleDirection).toBe("ZH->EN");
+    expect(stored.dualPair).toBe("EN<->ZH");
+    expect(stored.lastDirection).toBe("ZH->EN");
 
     const chromeRef = globalThis as unknown as { chrome: { storage: { local: { set: ReturnType<typeof vi.fn> } } } };
     expect(chromeRef.chrome.storage.local.set).toHaveBeenCalled();
@@ -57,4 +76,3 @@ describe("translation settings", () => {
     });
   });
 });
-

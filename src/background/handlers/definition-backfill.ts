@@ -1,5 +1,5 @@
 import type { DefinitionBackfillRequestPayload, DefinitionBackfillResponse } from "../../shared/messages";
-import { normalizeWord } from "../../shared/word/normalize";
+import { normalizeSelection } from "../../shared/word/normalize";
 import { geminiDefinitionProvider } from "../../shared/definition/providers/gemini";
 import { deepseekDefinitionProvider } from "../../shared/definition/providers/deepseek";
 import { moonshotDefinitionProvider } from "../../shared/definition/providers/moonshot";
@@ -52,9 +52,12 @@ export const handleDefinitionBackfillRequest = async (
     return { ok: false, error: "provider_error", message: "Definition unavailable (invalid request)." };
   }
 
-  const normalized = normalizeWord(payload.word);
-  if (!normalized) {
+  const selection = normalizeSelection(payload.word);
+  if (!selection) {
     return { ok: false, error: "provider_error", message: "Definition unavailable (invalid word)." };
+  }
+  if (selection.language !== "en") {
+    return { ok: false, error: "provider_error", message: "Definition unavailable." };
   }
 
   const settings = await readTranslationSettings();
@@ -109,11 +112,11 @@ export const handleDefinitionBackfillRequest = async (
     }
   }
 
-  const cacheKey = makeCacheKey(provider.id, normalized);
+  const cacheKey = makeCacheKey(provider.id, selection.normalizedWord);
   const cachedDefinitionEn = definitionEnCache.get(cacheKey);
   if (cachedDefinitionEn) {
     const translation = await handleTranslationRequest({
-      word: normalized,
+      word: selection.normalizedWord,
       definition: cachedDefinitionEn,
       targetLang: "zh"
     });
@@ -134,7 +137,7 @@ export const handleDefinitionBackfillRequest = async (
     const cachedAgain = definitionEnCache.get(cacheKey);
     if (cachedAgain) {
       const translation = await handleTranslationRequest({
-        word: normalized,
+        word: selection.normalizedWord,
         definition: cachedAgain,
         targetLang: "zh"
       });
@@ -151,7 +154,7 @@ export const handleDefinitionBackfillRequest = async (
       };
     }
 
-    const generated = await provider.generateDefinition({ word: normalized }, apiKey);
+    const generated = await provider.generateDefinition({ word: selection.normalizedWord }, apiKey);
     if (!generated.ok) {
       return { ok: false, error: generated.error, message: generated.message };
     }
@@ -159,7 +162,7 @@ export const handleDefinitionBackfillRequest = async (
     definitionEnCache.set(cacheKey, generated.definitionEn);
 
     const translation = await handleTranslationRequest({
-      word: normalized,
+      word: selection.normalizedWord,
       definition: generated.definitionEn,
       targetLang: "zh"
     });

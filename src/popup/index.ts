@@ -1,6 +1,8 @@
 import { MessageTypes } from "../shared/messages";
 import type { Preferences, WordEntry } from "../shared/storage/schema";
+import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/translation/settings";
 import { filterWordEntries, sortWordEntries } from "../shared/word/list";
+import { detectWordLanguage, type WordLanguage } from "../shared/word/normalize";
 
 type WordsResponse =
   | { ok: true; words: WordEntry[] }
@@ -42,13 +44,21 @@ const emptyEl = document.getElementById("empty-state") as HTMLDivElement | null;
 const countEl = document.getElementById("word-count") as HTMLDivElement | null;
 const settingsButton = document.getElementById("settings-button") as HTMLButtonElement | null;
 const toggleButton = document.getElementById("highlight-toggle") as HTMLButtonElement | null;
+const directionToggle = document.getElementById("direction-toggle") as HTMLDivElement | null;
+const directionButtons = directionToggle
+  ? Array.from(directionToggle.querySelectorAll<HTMLButtonElement>(".wordmark-direction-button"))
+  : [];
 
-if (!app || !searchInput || !listEl || !emptyEl || !countEl || !toggleButton || !settingsButton) {
+if (!app || !searchInput || !listEl || !emptyEl || !countEl || !toggleButton || !settingsButton || !directionToggle) {
   throw new Error("Popup root elements missing.");
 }
 
 let words: WordEntry[] = [];
 let highlightEnabled = true;
+let translationMode: "single" | "dual" = "single";
+let singleDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let listDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let lastDirectionFromSettings: "EN->ZH" | "ZH->EN" = "EN->ZH";
 
 const formatCount = (count: number) => `${count} ${count === 1 ? "time" : "times"}`;
 
@@ -71,13 +81,44 @@ const setToggleState = (enabled: boolean) => {
   toggleButton.setAttribute("aria-pressed", String(enabled));
 };
 
+const getEntryLanguage = (entry: WordEntry): WordLanguage | null => {
+  return detectWordLanguage(entry.normalizedWord) ?? detectWordLanguage(entry.displayWord);
+};
+
+const getActiveDirection = (): "EN->ZH" | "ZH->EN" => {
+  return translationMode === "single" ? singleDirection : listDirection;
+};
+
+const filterByDirection = (entries: WordEntry[]) => {
+  const activeDirection = getActiveDirection();
+  return entries.filter((entry) => {
+    const language = getEntryLanguage(entry);
+    if (!language) {
+      return true;
+    }
+    if (activeDirection === "EN->ZH") {
+      return language === "en";
+    }
+    return language === "zh";
+  });
+};
+
+const updateDirectionToggle = () => {
+  directionToggle.hidden = translationMode !== "dual";
+  directionButtons.forEach((button) => {
+    const direction = button.dataset.direction;
+    button.setAttribute("aria-pressed", String(direction === listDirection));
+  });
+};
+
 const renderList = () => {
   const query = searchInput.value;
-  const filtered = filterWordEntries(words, query);
+  const directionFiltered = filterByDirection(words);
+  const filtered = filterWordEntries(directionFiltered, query);
   const sorted = sortWordEntries(filtered);
 
   listEl.textContent = "";
-  countEl.textContent = `${words.length} ${words.length === 1 ? "word" : "words"}`;
+  countEl.textContent = `${directionFiltered.length} WORDS`;
 
   if (sorted.length === 0) {
     const message = query.trim() ? "No matches found." : "No words yet.";
@@ -95,10 +136,16 @@ const renderList = () => {
     const word = document.createElement("div");
     word.className = "wordmark-word";
     word.textContent = entry.displayWord;
-    if (typeof entry.wordZh === "string" && entry.wordZh.trim()) {
+    const label =
+      typeof entry.wordZh === "string" && entry.wordZh.trim()
+        ? entry.wordZh.trim()
+        : typeof entry.wordEn === "string" && entry.wordEn.trim()
+          ? entry.wordEn.trim()
+          : "";
+    if (label) {
       const zh = document.createElement("span");
       zh.className = "wordmark-word-zh";
-      zh.textContent = ` ${entry.wordZh.trim()}`;
+      zh.textContent = ` ${label}`;
       word.appendChild(zh);
     }
 
@@ -146,6 +193,21 @@ const refreshWords = async () => {
   renderList();
 };
 
+const refreshTranslationSettings = async () => {
+  const settings = await readTranslationSettings();
+  const modeChanged = settings.mode !== translationMode;
+  translationMode = settings.mode;
+  singleDirection = settings.singleDirection;
+  if (translationMode === "single") {
+    listDirection = singleDirection;
+  } else if (modeChanged || settings.lastDirection !== lastDirectionFromSettings) {
+    listDirection = settings.lastDirection;
+  }
+  lastDirectionFromSettings = settings.lastDirection;
+  updateDirectionToggle();
+  renderList();
+};
+
 const refreshPreferences = async () => {
   const response = await sendMessage<PreferencesResponse>({
     type: MessageTypes.GetHighlightPreference
@@ -184,11 +246,16 @@ toggleButton.addEventListener("click", async () => {
 
 if (chrome?.storage?.onChanged) {
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local" || !changes[STORAGE_KEY]) {
+    if (areaName !== "local") {
       return;
     }
-    void refreshWords();
-    void refreshPreferences();
+    if (changes[STORAGE_KEY]) {
+      void refreshWords();
+      void refreshPreferences();
+    }
+    if (changes[TRANSLATION_SETTINGS_KEY]) {
+      void refreshTranslationSettings();
+    }
   });
 }
 
@@ -215,7 +282,22 @@ settingsButton.addEventListener("click", () => {
   void openOptionsPage();
 });
 
+directionButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    if (translationMode !== "dual") {
+      return;
+    }
+    const direction = button.dataset.direction;
+    if (direction === "EN->ZH" || direction === "ZH->EN") {
+      listDirection = direction;
+      updateDirectionToggle();
+      renderList();
+    }
+  });
+});
+
 void refreshWords();
+void refreshTranslationSettings();
 void refreshPreferences();
 
 export {};

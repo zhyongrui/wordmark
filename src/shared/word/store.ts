@@ -77,13 +77,21 @@ export const writeStore = async (next: StorageEnvelope): Promise<void> => {
 export const recordLookup = async (entry: Omit<WordEntry, "queryCount" | "lastQueriedAt">): Promise<WordEntry> => {
   const store = await readStore();
   const existing = store.wordsByKey[entry.normalizedWord];
-  const existingWordZh = existing && typeof existing.wordZh === "string" && existing.wordZh.trim() ? existing.wordZh : null;
+  const existingWordZh =
+    existing && typeof existing.wordZh === "string" && existing.wordZh.trim() ? existing.wordZh : null;
+  const existingWordEn =
+    existing && typeof existing.wordEn === "string" && existing.wordEn.trim() ? existing.wordEn : null;
+  const nextWordZh =
+    typeof entry.wordZh === "string" && entry.wordZh.trim() ? entry.wordZh : existingWordZh;
+  const nextWordEn =
+    typeof entry.wordEn === "string" && entry.wordEn.trim() ? entry.wordEn : existingWordEn;
   const nextEntry: WordEntry = {
     ...entry,
     queryCount: existing ? existing.queryCount + 1 : 1,
     lastQueriedAt: new Date().toISOString(),
     definition: entry.definition ?? null,
-    wordZh: existingWordZh ?? entry.wordZh
+    wordZh: nextWordZh ?? undefined,
+    wordEn: nextWordEn ?? undefined
   };
 
   const nextStore: StorageEnvelope = {
@@ -128,6 +136,43 @@ export const updateWordZh = async (normalizedWord: string, wordZh: string): Prom
       [normalized]: {
         ...existing,
         wordZh: clamped
+      }
+    }
+  };
+
+  await writeStore(nextStore);
+};
+
+export const updateWordEn = async (normalizedWord: string, wordEn: string): Promise<void> => {
+  const normalized = typeof normalizedWord === "string" ? normalizedWord.trim() : "";
+  const raw = typeof wordEn === "string" ? wordEn : "";
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!normalized || !trimmed) {
+    return;
+  }
+
+  const clamped = trimmed.length > 64 ? trimmed.slice(0, 64).trim() : trimmed;
+  if (!clamped) {
+    return;
+  }
+
+  const store = await readStore();
+  const existing = store.wordsByKey[normalized];
+  if (!existing) {
+    return;
+  }
+
+  if (existing.wordEn === clamped) {
+    return;
+  }
+
+  const nextStore: StorageEnvelope = {
+    ...store,
+    wordsByKey: {
+      ...store.wordsByKey,
+      [normalized]: {
+        ...existing,
+        wordEn: clamped
       }
     }
   };

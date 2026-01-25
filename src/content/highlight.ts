@@ -9,7 +9,10 @@ const HIGHLIGHT_CLASS = "wordmark-highlight";
 const HIGHLIGHT_WORD_ATTR = "data-wordmark-word";
 const ROOT_ATTR = "data-wordmark-root";
 const STYLE_ID = "wordmark-highlight-style";
-const WORD_PATTERN = /[A-Za-z]+(?:['-][A-Za-z]+)*/g;
+const ENGLISH_WORD_SOURCE = "[A-Za-z]+(?:['-][A-Za-z]+)*";
+const ENGLISH_WORD_PATTERN = new RegExp(ENGLISH_WORD_SOURCE, "g");
+const ENGLISH_LETTER_PATTERN = /[A-Za-z]/;
+const HAN_LETTER_PATTERN = /\p{Script=Han}/u;
 const IGNORED_TAGS = new Set([
   "input",
   "textarea",
@@ -69,8 +72,46 @@ const isIgnoredElement = (element: Element | null): boolean => {
   return false;
 };
 
+let hasChineseWords = false;
+let highlightPattern: RegExp = ENGLISH_WORD_PATTERN;
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export const buildHighlightPattern = (
+  words: string[]
+): { pattern: RegExp; hasChineseWords: boolean } => {
+  const chineseWords = words.filter((word) => HAN_LETTER_PATTERN.test(word));
+  if (chineseWords.length === 0) {
+    return { pattern: ENGLISH_WORD_PATTERN, hasChineseWords: false };
+  }
+
+  chineseWords.sort((a, b) => b.length - a.length);
+  const source = chineseWords.map(escapeRegExp).join("|");
+  if (!source) {
+    return { pattern: ENGLISH_WORD_PATTERN, hasChineseWords: false };
+  }
+
+  return {
+    pattern: new RegExp(`${ENGLISH_WORD_SOURCE}|(?:${source})`, "gu"),
+    hasChineseWords: true
+  };
+};
+
+const rebuildHighlightPattern = (words: Set<string>) => {
+  const next = buildHighlightPattern(Array.from(words));
+  hasChineseWords = next.hasChineseWords;
+  highlightPattern = next.pattern;
+};
+
 const shouldProcessTextNode = (node: Text): boolean => {
-  if (!node.nodeValue || !/[A-Za-z]/.test(node.nodeValue)) {
+  if (!node.nodeValue) {
+    return false;
+  }
+  if (hasChineseWords) {
+    if (!ENGLISH_LETTER_PATTERN.test(node.nodeValue) && !HAN_LETTER_PATTERN.test(node.nodeValue)) {
+      return false;
+    }
+  } else if (!ENGLISH_LETTER_PATTERN.test(node.nodeValue)) {
     return false;
   }
   const parent = node.parentElement;
@@ -86,13 +127,13 @@ const highlightTextNode = (node: Text, words: Set<string>): void => {
     return;
   }
 
-  WORD_PATTERN.lastIndex = 0;
+  highlightPattern.lastIndex = 0;
   let match: RegExpExecArray | null;
   let lastIndex = 0;
   let hasHighlights = false;
   const fragment = document.createDocumentFragment();
 
-  while ((match = WORD_PATTERN.exec(text)) !== null) {
+  while ((match = highlightPattern.exec(text)) !== null) {
     const matchText = match[0];
     const start = match.index;
     const end = start + matchText.length;
@@ -100,7 +141,7 @@ const highlightTextNode = (node: Text, words: Set<string>): void => {
       fragment.appendChild(document.createTextNode(text.slice(lastIndex, start)));
     }
 
-    const normalized = matchText.toLowerCase();
+    const normalized = ENGLISH_LETTER_PATTERN.test(matchText) ? matchText.toLowerCase() : matchText;
     if (words.has(normalized)) {
       hasHighlights = true;
       const mark = document.createElement("span");
@@ -445,6 +486,7 @@ export const createHighlightEngine = (): HighlightEngine => {
     const removed = Array.from(words).filter((word) => !nextSet.has(word));
     const added = Array.from(nextSet).filter((word) => !words.has(word));
     words = nextSet;
+    rebuildHighlightPattern(words);
 
     removed.forEach(removeHighlightsByWord);
 
@@ -469,6 +511,7 @@ export const createHighlightEngine = (): HighlightEngine => {
       return;
     }
     words.delete(word);
+    rebuildHighlightPattern(words);
     removeHighlightsByWord(word);
   };
 

@@ -1,7 +1,7 @@
 import { lookupDictionary } from "../../shared/dictionary";
 import type { DefinitionSource } from "../../shared/messages";
 import { shapeLookupResult } from "../../shared/word/lookup";
-import { normalizeWord } from "../../shared/word/normalize";
+import { normalizeSelection } from "../../shared/word/normalize";
 import { recordLookup } from "../../shared/word/store";
 
 export type LookupRequestPayload = {
@@ -18,14 +18,15 @@ export const handleLookupRequest = async (payload: LookupRequestPayload): Promis
     return { ok: false, error: "invalid-payload" };
   }
 
-  const normalized = normalizeWord(payload.selectedText);
-  if (!normalized) {
+  const selection = normalizeSelection(payload.selectedText);
+  if (!selection) {
     return { ok: false, error: "invalid-selection" };
   }
 
-  const dictionaryEntry = lookupDictionary(normalized);
+  const dictionaryEntry =
+    selection.language === "en" ? lookupDictionary(selection.normalizedWord) : null;
   const result = shapeLookupResult({
-    normalizedWord: normalized,
+    normalizedWord: selection.normalizedWord,
     displayWord: payload.selectedText,
     dictionaryEntry,
     ttsAvailable: Boolean(payload.ttsAvailable)

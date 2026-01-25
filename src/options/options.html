@@ -44,6 +44,8 @@
         border: 1px solid #fbbf24;
         border-radius: 10px;
         padding: 10px 12px;
+        width: 240px;
+        align-self: flex-start;
       }
       .translation-toggle label {
         font-weight: 700;
@@ -95,6 +97,53 @@
         margin-top: 10px;
         font-size: 12px;
         color: #6b7280;
+      }
+      .segmented {
+        display: inline-flex;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f3f4f6;
+        align-self: flex-start;
+      }
+      .segmented button {
+        border: none;
+        background: transparent;
+        padding: 8px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        color: #111827;
+      }
+      .segmented button + button {
+        border-left: 1px solid #d1d5db;
+      }
+      .segmented button[aria-pressed="true"] {
+        background: #111827;
+        color: #ffffff;
+      }
+      .segmented button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+      .direction-select {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        align-self: flex-start;
+      }
+      .direction-select select {
+        padding-right: 120px;
+      }
+      .select-compact {
+        width: 240px;
+      }
+      .direction-hint {
+        position: absolute;
+        right: 28px;
+        font-size: 12px;
+        color: #6b7280;
+        pointer-events: none;
+        white-space: nowrap;
       }
       .provider-config {
         margin-top: 12px;
@@ -166,8 +215,24 @@
         </div>
 
         <div class="field">
+          <label>Mode</label>
+          <div class="segmented" role="group" aria-label="Translation mode">
+            <button type="button" id="translation-mode-single" aria-pressed="true">Single</button>
+            <button type="button" id="translation-mode-dual" aria-pressed="false">Dual</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="translation-direction">Direction</label>
+          <div class="direction-select">
+            <select id="translation-direction" class="select-compact"></select>
+            <span class="direction-hint" id="translation-direction-hint" hidden>查词自动识别语言</span>
+          </div>
+        </div>
+
+        <div class="field">
           <label for="translation-provider">Provider</label>
-          <select id="translation-provider">
+          <select id="translation-provider" class="select-compact">
             <option value="gemini">Gemini</option>
             <option value="deepseek">DeepSeek</option>
             <option value="moonshot">Moonshot</option>
