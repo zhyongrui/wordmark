@@ -40,10 +40,6 @@
         margin: 10px 0;
       }
       .field-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: flex-end;
         margin: 10px 0;
       }
       .field-inline {
@@ -61,30 +57,43 @@
         border-radius: 8px;
         border: 1px solid #d1d5db;
       }
+      .grid-width input[type="password"],
+      .grid-width input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .provider-config input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      :root {
+        --translation-col-width: 220px;
+        --definition-col-width: 220px;
+        --definition-translate-col-width: 220px;
+        --translation-row-gap: 16px;
+        --translation-row-width: 692px;
+      }
+      .grid-row {
+        display: grid;
+        grid-template-columns: var(--translation-col-width) var(--definition-col-width)
+          var(--definition-translate-col-width);
+        column-gap: var(--translation-row-gap);
+        align-items: end;
+        width: var(--translation-row-width);
+      }
       .toggle-row {
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
         align-items: stretch;
       }
-      .toggle-group {
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
+      .grid-width {
+        width: var(--translation-row-width);
       }
       .toggle-box {
         background: #f9fafb;
         border: 1px solid #d1d5db;
         border-radius: 10px;
         padding: 10px 12px;
-        width: 220px;
+        width: 100%;
         box-sizing: border-box;
-      }
-      #definition-backfill-toggle {
-        width: 210px;
-      }
-      #definition-translation-toggle {
-        width: 250px;
       }
       .toggle-box label {
         display: flex;
@@ -147,7 +156,7 @@
         overflow: hidden;
         background: #f3f4f6;
         align-self: flex-start;
-        width: 220px;
+        width: 100%;
       }
       .segmented button {
         border: none;
@@ -168,21 +177,15 @@
       }
       .direction-select {
         position: relative;
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        align-self: flex-start;
+        width: 100%;
       }
       .direction-select select {
         padding-right: 120px;
       }
       .select-compact {
-        width: auto;
-      }
-      .select-direction {
-        width: 210px;
-      }
-      .select-provider {
-        width: 250px;
+        width: 100%;
       }
       .direction-hint {
         position: absolute;
@@ -198,6 +201,8 @@
         border: 1px dashed #e5e7eb;
         border-radius: 10px;
         background: #f8fafc;
+        width: var(--translation-row-width);
+        box-sizing: border-box;
       }
       .shortcut-card {
         background: #ffffff;
@@ -255,31 +260,29 @@
         </p>
 
         <div class="field">
-          <div class="toggle-row">
+          <div class="toggle-row grid-row">
             <div class="toggle-box toggle-box-accent">
               <label>
                 <input type="checkbox" id="translation-enabled" />
                 Enable translation (opt-in)
               </label>
             </div>
-            <div class="toggle-group">
-              <div class="toggle-box" id="definition-backfill-toggle">
-                <label>
-                  <input type="checkbox" id="definition-backfill-enabled" />
-                  Enable definition backfill
-                </label>
-              </div>
-              <div class="toggle-box" id="definition-translation-toggle">
-                <label>
-                  <input type="checkbox" id="definition-translation-enabled" />
-                  Translate generated definitions
-                </label>
-              </div>
+            <div class="toggle-box" id="definition-backfill-toggle">
+              <label>
+                <input type="checkbox" id="definition-backfill-enabled" />
+                Same-language definition
+              </label>
+            </div>
+            <div class="toggle-box" id="definition-translation-toggle">
+              <label>
+                <input type="checkbox" id="definition-translation-enabled" />
+                Translate definitions
+              </label>
             </div>
           </div>
         </div>
 
-        <div class="field-row">
+        <div class="field-row grid-row">
           <div class="field-inline">
             <label>Mode</label>
             <div class="segmented" role="group" aria-label="Translation mode">
@@ -291,13 +294,13 @@
           <div class="field-inline">
             <label for="translation-direction">Direction</label>
             <div class="direction-select">
-              <select id="translation-direction" class="select-compact select-direction"></select>
+              <select id="translation-direction" class="select-compact"></select>
               <span class="direction-hint" id="translation-direction-hint" hidden>查词自动识别语言</span>
             </div>
           </div>
           <div class="field-inline">
             <label for="translation-provider">Provider</label>
-            <select id="translation-provider" class="select-compact select-provider">
+            <select id="translation-provider" class="select-compact">
               <option value="gemini">Gemini</option>
               <option value="deepseek">DeepSeek</option>
               <option value="moonshot">Moonshot</option>
@@ -481,7 +484,7 @@
           <div class="note">Zhipu configuration is required only when Zhipu is selected.</div>
         </div>
 
-        <div class="field">
+        <div class="field grid-width">
           <label for="translation-api-key">API key</label>
           <input
             id="translation-api-key"
