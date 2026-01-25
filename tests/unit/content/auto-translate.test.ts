@@ -5,6 +5,8 @@ let translationEnabled = false;
 let translationMode: "single" | "dual" = "single";
 let singleDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
 let lastDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let definitionBackfillEnabled = false;
+let definitionTranslationEnabled = false;
 
 const showLookupOverlay = vi.fn();
 const showTranslationLoading = vi.fn();
@@ -19,7 +21,9 @@ vi.mock("../../../src/shared/translation/settings", () => {
       mode: translationMode,
       singleDirection,
       dualPair: "EN<->ZH",
-      lastDirection
+      lastDirection,
+      definitionBackfillEnabled,
+      definitionTranslationEnabled
     })),
     updateTranslationSettings: vi.fn()
   };
@@ -136,6 +140,8 @@ beforeEach(() => {
   translationMode = "single";
   singleDirection = "EN->ZH";
   lastDirection = "EN->ZH";
+  definitionBackfillEnabled = false;
+  definitionTranslationEnabled = false;
   installMinimalDom();
 });
 

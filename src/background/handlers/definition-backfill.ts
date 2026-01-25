@@ -101,7 +101,7 @@ export const handleDefinitionBackfillRequest = async (
   }
 
   const settings = await readTranslationSettings();
-  if (!settings.enabled) {
+  if (!settings.enabled || !settings.definitionBackfillEnabled) {
     return { ok: false, error: "disabled", message: "Definition backfill is disabled." };
   }
 
@@ -153,25 +153,22 @@ export const handleDefinitionBackfillRequest = async (
   }
 
   const sourceLang = selection.language;
+  const translateDefinitions = settings.definitionTranslationEnabled;
   const cacheKey = makeCacheKey(provider.id, sourceLang, selection.normalizedWord);
   const cachedDefinitionText = definitionTextCache.get(cacheKey);
   if (cachedDefinitionText) {
-    const translatedDefinition = await resolveDefinitionTranslation(
-      sourceLang,
-      selection.normalizedWord,
-      cachedDefinitionText
-    );
+    const translatedDefinition = translateDefinitions
+      ? await resolveDefinitionTranslation(sourceLang, selection.normalizedWord, cachedDefinitionText)
+      : null;
     return toBackfillResponse({ sourceLang, definitionText: cachedDefinitionText, translatedDefinition });
   }
 
   return await inSessionDeduper.dedupe(cacheKey, async () => {
     const cachedAgain = definitionTextCache.get(cacheKey);
     if (cachedAgain) {
-      const translatedDefinition = await resolveDefinitionTranslation(
-        sourceLang,
-        selection.normalizedWord,
-        cachedAgain
-      );
+      const translatedDefinition = translateDefinitions
+        ? await resolveDefinitionTranslation(sourceLang, selection.normalizedWord, cachedAgain)
+        : null;
       return toBackfillResponse({ sourceLang, definitionText: cachedAgain, translatedDefinition });
     }
 
@@ -185,11 +182,9 @@ export const handleDefinitionBackfillRequest = async (
 
     definitionTextCache.set(cacheKey, generated.definitionText);
 
-    const translatedDefinition = await resolveDefinitionTranslation(
-      sourceLang,
-      selection.normalizedWord,
-      generated.definitionText
-    );
+    const translatedDefinition = translateDefinitions
+      ? await resolveDefinitionTranslation(sourceLang, selection.normalizedWord, generated.definitionText)
+      : null;
 
     return toBackfillResponse({
       sourceLang,

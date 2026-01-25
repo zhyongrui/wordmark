@@ -5,6 +5,8 @@ let translationEnabled = false;
 let translationMode: "single" | "dual" = "single";
 let singleDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
 let lastDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let definitionBackfillEnabled = false;
+let definitionTranslationEnabled = false;
 
 const showLookupOverlay = vi.fn();
 const showTranslationLoading = vi.fn();
@@ -20,7 +22,9 @@ vi.mock("../../../src/shared/translation/settings", () => {
       mode: translationMode,
       singleDirection,
       dualPair: "EN<->ZH",
-      lastDirection
+      lastDirection,
+      definitionBackfillEnabled,
+      definitionTranslationEnabled
     })),
     updateTranslationSettings: vi.fn()
   };
@@ -142,12 +146,16 @@ beforeEach(() => {
   translationMode = "single";
   singleDirection = "EN->ZH";
   lastDirection = "EN->ZH";
+  definitionBackfillEnabled = false;
+  definitionTranslationEnabled = false;
   installMinimalDom();
 });
 
 describe("Spec 003 definition backfill fallback UI", () => {
   it("shows a short fallback message (no raw provider details) on provider_error", async () => {
     translationEnabled = true;
+    definitionBackfillEnabled = true;
+    definitionTranslationEnabled = true;
 
     const chromeRuntime = installFakeChromeRuntime({
       onLookup: () => ({
@@ -182,6 +190,8 @@ describe("Spec 003 definition backfill fallback UI", () => {
   it("passes zh definitions through to the overlay in ZH->EN flow", async () => {
     translationEnabled = true;
     translationMode = "dual";
+    definitionBackfillEnabled = true;
+    definitionTranslationEnabled = true;
     installMinimalDom("你好");
 
     const chromeRuntime = installFakeChromeRuntime({
@@ -216,7 +226,8 @@ describe("Spec 003 definition backfill fallback UI", () => {
         definitionSourceLang: "zh",
         definitionZh: "一种问候语。",
         definitionEn: "A greeting."
-      })
+      }),
+      { showDefinitionTranslation: true }
     );
   });
 });

@@ -11,6 +11,8 @@ export type TranslationSettings = {
   singleDirection: TranslationDirection;
   dualPair: TranslationDualPair;
   lastDirection: TranslationDirection;
+  definitionBackfillEnabled: boolean;
+  definitionTranslationEnabled: boolean;
 };
 
 const defaultSettings: TranslationSettings = {
@@ -19,7 +21,9 @@ const defaultSettings: TranslationSettings = {
   mode: "single",
   singleDirection: "EN->ZH",
   dualPair: "EN<->ZH",
-  lastDirection: "EN->ZH"
+  lastDirection: "EN->ZH",
+  definitionBackfillEnabled: false,
+  definitionTranslationEnabled: false
 };
 
 type StorageArea = {
@@ -101,6 +105,14 @@ const parseSettings = (input: unknown): TranslationSettings => {
   const dualPair = isDualPair(dualPairRaw) ? dualPairRaw : defaultSettings.dualPair;
   const lastDirectionRaw = (input as { lastDirection?: unknown }).lastDirection;
   const lastDirection = isDirection(lastDirectionRaw) ? lastDirectionRaw : singleDirection;
+  const definitionBackfillRaw = (input as { definitionBackfillEnabled?: unknown }).definitionBackfillEnabled;
+  const definitionBackfillEnabled =
+    typeof definitionBackfillRaw === "boolean" ? definitionBackfillRaw : defaultSettings.definitionBackfillEnabled;
+  const definitionTranslationRaw = (input as { definitionTranslationEnabled?: unknown }).definitionTranslationEnabled;
+  const definitionTranslationEnabled =
+    typeof definitionTranslationRaw === "boolean"
+      ? definitionTranslationRaw
+      : defaultSettings.definitionTranslationEnabled;
 
   return {
     enabled,
@@ -108,7 +120,9 @@ const parseSettings = (input: unknown): TranslationSettings => {
     mode,
     singleDirection,
     dualPair,
-    lastDirection
+    lastDirection,
+    definitionBackfillEnabled,
+    definitionTranslationEnabled
   };
 };
 
@@ -147,7 +161,15 @@ export const updateTranslationSettings = async (
     mode: isMode(update.mode) ? update.mode : current.mode,
     singleDirection: isDirection(update.singleDirection) ? update.singleDirection : current.singleDirection,
     dualPair: isDualPair(update.dualPair) ? update.dualPair : current.dualPair,
-    lastDirection: isDirection(update.lastDirection) ? update.lastDirection : current.lastDirection
+    lastDirection: isDirection(update.lastDirection) ? update.lastDirection : current.lastDirection,
+    definitionBackfillEnabled:
+      typeof update.definitionBackfillEnabled === "boolean"
+        ? update.definitionBackfillEnabled
+        : current.definitionBackfillEnabled,
+    definitionTranslationEnabled:
+      typeof update.definitionTranslationEnabled === "boolean"
+        ? update.definitionTranslationEnabled
+        : current.definitionTranslationEnabled
   };
 
   await writeTranslationSettings(next);

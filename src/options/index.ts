@@ -23,6 +23,9 @@ const byId = <T extends HTMLElement>(id: string): T | null => {
 };
 
 const enabledCheckbox = byId<HTMLInputElement>("translation-enabled");
+const definitionBackfillCheckbox = byId<HTMLInputElement>("definition-backfill-enabled");
+const definitionTranslationCheckbox = byId<HTMLInputElement>("definition-translation-enabled");
+const definitionTranslationToggle = byId<HTMLDivElement>("definition-translation-toggle");
 const modeSingleButton = byId<HTMLButtonElement>("translation-mode-single");
 const modeDualButton = byId<HTMLButtonElement>("translation-mode-dual");
 const directionSelect = byId<HTMLSelectElement>("translation-direction");
@@ -152,6 +155,15 @@ const updateProviderVisibility = () => {
   }
 };
 
+const updateDefinitionTranslationToggleState = (backfillEnabled: boolean) => {
+  if (definitionTranslationCheckbox) {
+    definitionTranslationCheckbox.disabled = !backfillEnabled;
+  }
+  if (definitionTranslationToggle) {
+    definitionTranslationToggle.classList.toggle("is-disabled", !backfillEnabled);
+  }
+};
+
 const refresh = async () => {
   if (!enabledCheckbox || !providerSelect) {
     return;
@@ -159,6 +171,13 @@ const refresh = async () => {
 
   const settings = await readTranslationSettings();
   enabledCheckbox.checked = settings.enabled;
+  if (definitionBackfillCheckbox) {
+    definitionBackfillCheckbox.checked = settings.definitionBackfillEnabled;
+  }
+  if (definitionTranslationCheckbox) {
+    definitionTranslationCheckbox.checked = settings.definitionTranslationEnabled;
+  }
+  updateDefinitionTranslationToggleState(settings.definitionBackfillEnabled);
   providerSelect.value = settings.providerId || "gemini";
   currentMode = settings.mode;
   updateModeUi(settings.mode);
@@ -238,6 +257,9 @@ const refresh = async () => {
 const initialize = () => {
   if (
     !enabledCheckbox ||
+    !definitionBackfillCheckbox ||
+    !definitionTranslationCheckbox ||
+    !definitionTranslationToggle ||
     !modeSingleButton ||
     !modeDualButton ||
     !directionSelect ||
@@ -299,6 +321,20 @@ const initialize = () => {
   enabledCheckbox.addEventListener("change", () => {
     void (async () => {
       await updateTranslationSettings({ enabled: enabledCheckbox.checked });
+      await refresh();
+    })();
+  });
+
+  definitionBackfillCheckbox.addEventListener("change", () => {
+    void (async () => {
+      await updateTranslationSettings({ definitionBackfillEnabled: definitionBackfillCheckbox.checked });
+      await refresh();
+    })();
+  });
+
+  definitionTranslationCheckbox.addEventListener("change", () => {
+    void (async () => {
+      await updateTranslationSettings({ definitionTranslationEnabled: definitionTranslationCheckbox.checked });
       await refresh();
     })();
   });

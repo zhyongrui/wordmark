@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { updateTranslationSettings } from "../../../src/shared/translation/settings";
 import { setTranslationApiKey } from "../../../src/shared/translation/secrets";
 import type { DefinitionResponse } from "../../../src/shared/definition/types";
@@ -27,8 +27,18 @@ vi.mock("../../../src/background/handlers/translation", () => {
 import { handleDefinitionBackfillRequest } from "../../../src/background/handlers/definition-backfill";
 
 describe("definition backfill handler", () => {
+  beforeEach(() => {
+    generateDefinition.mockReset();
+    handleTranslationRequest.mockReset();
+  });
+
   it("caches generated definitions by word", async () => {
-    await updateTranslationSettings({ enabled: true, providerId: "gemini" });
+    await updateTranslationSettings({
+      enabled: true,
+      providerId: "gemini",
+      definitionBackfillEnabled: true,
+      definitionTranslationEnabled: true
+    });
     await setTranslationApiKey("gemini", "AIzaFakeKeyForTest");
 
     generateDefinition.mockResolvedValue({ ok: true, definitionText: "A fruit.", definitionLang: "en" });
@@ -43,7 +53,12 @@ describe("definition backfill handler", () => {
   });
 
   it("returns zh definitions with en translation for Chinese source words", async () => {
-    await updateTranslationSettings({ enabled: true, providerId: "gemini" });
+    await updateTranslationSettings({
+      enabled: true,
+      providerId: "gemini",
+      definitionBackfillEnabled: true,
+      definitionTranslationEnabled: true
+    });
     await setTranslationApiKey("gemini", "AIzaFakeKeyForTest");
 
     generateDefinition.mockResolvedValue({ ok: true, definitionText: "一种问候语。", definitionLang: "zh" });
@@ -56,6 +71,27 @@ describe("definition backfill handler", () => {
       expect(response.definitionSourceLang).toBe("zh");
       expect(response.definitionZh).toBe("一种问候语。");
       expect(response.definitionEn).toBe("A greeting.");
+    }
+  });
+
+  it("skips definition translation when disabled", async () => {
+    await updateTranslationSettings({
+      enabled: true,
+      providerId: "gemini",
+      definitionBackfillEnabled: true,
+      definitionTranslationEnabled: false
+    });
+    await setTranslationApiKey("gemini", "AIzaFakeKeyForTest");
+
+    generateDefinition.mockResolvedValue({ ok: true, definitionText: "A fruit.", definitionLang: "en" });
+
+    const response = await handleDefinitionBackfillRequest({ word: "apple" });
+
+    expect(handleTranslationRequest).not.toHaveBeenCalled();
+    expect(response.ok).toBe(true);
+    if (response.ok) {
+      expect(response.definitionEn).toBe("A fruit.");
+      expect(response.definitionZh).toBeNull();
     }
   });
 });

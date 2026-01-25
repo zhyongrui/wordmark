@@ -42,6 +42,8 @@ describe("translation settings", () => {
     expect(settings.singleDirection).toBe("EN->ZH");
     expect(settings.dualPair).toBe("EN<->ZH");
     expect(settings.lastDirection).toBe("EN->ZH");
+    expect(settings.definitionBackfillEnabled).toBe(false);
+    expect(settings.definitionTranslationEnabled).toBe(false);
   });
 
   it("persists updates and round-trips", async () => {
@@ -51,7 +53,9 @@ describe("translation settings", () => {
       mode: "dual",
       singleDirection: "ZH->EN",
       dualPair: "EN<->ZH",
-      lastDirection: "ZH->EN"
+      lastDirection: "ZH->EN",
+      definitionBackfillEnabled: true,
+      definitionTranslationEnabled: true
     });
 
     expect(next.enabled).toBe(true);
@@ -60,6 +64,8 @@ describe("translation settings", () => {
     expect(next.singleDirection).toBe("ZH->EN");
     expect(next.dualPair).toBe("EN<->ZH");
     expect(next.lastDirection).toBe("ZH->EN");
+    expect(next.definitionBackfillEnabled).toBe(true);
+    expect(next.definitionTranslationEnabled).toBe(true);
 
     const stored = await readTranslationSettings();
     expect(stored.enabled).toBe(true);
@@ -68,6 +74,8 @@ describe("translation settings", () => {
     expect(stored.singleDirection).toBe("ZH->EN");
     expect(stored.dualPair).toBe("EN<->ZH");
     expect(stored.lastDirection).toBe("ZH->EN");
+    expect(stored.definitionBackfillEnabled).toBe(true);
+    expect(stored.definitionTranslationEnabled).toBe(true);
 
     const chromeRef = globalThis as unknown as { chrome: { storage: { local: { set: ReturnType<typeof vi.fn> } } } };
     expect(chromeRef.chrome.storage.local.set).toHaveBeenCalled();

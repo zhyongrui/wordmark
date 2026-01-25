@@ -51,6 +51,8 @@ const highlightEngine = createHighlightEngine();
 let highlightEnabled = true;
 let lookupSessionId = 0;
 let translationEnabled = false;
+let definitionBackfillEnabled = false;
+let definitionTranslationEnabled = false;
 let latestLookup:
   | { sessionId: number; word: string; definition: string | null; language: WordLanguage }
   | null = null;
@@ -98,7 +100,9 @@ const triggerLookup = async () => {
     mode: "single",
     singleDirection: "EN->ZH",
     dualPair: "EN<->ZH",
-    lastDirection: "EN->ZH"
+    lastDirection: "EN->ZH",
+    definitionBackfillEnabled: false,
+    definitionTranslationEnabled: false
   }));
   const selection = window.getSelection()?.toString() ?? "";
   const selectionLanguage = detectWordLanguage(selection);
@@ -110,6 +114,8 @@ const triggerLookup = async () => {
 
   const settings = await translationSettingsPromise;
   translationEnabled = Boolean(settings.enabled);
+  definitionBackfillEnabled = Boolean(settings.definitionBackfillEnabled);
+  definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
   if (selectionLanguage === "zh" && !translationEnabled) {
     ensureOverlayAutoClose();
     showNotice("Enable translation to look up Chinese words.");
@@ -170,7 +176,11 @@ const triggerLookup = async () => {
   };
   if (translationEnabled) {
     void requestTranslation(sessionId, entry.displayWord, entry.definition, selectionLanguage);
-    if (entry.definition == null && (selectionLanguage === "en" || selectionLanguage === "zh")) {
+    if (
+      definitionBackfillEnabled &&
+      entry.definition == null &&
+      (selectionLanguage === "en" || selectionLanguage === "zh")
+    ) {
       void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
     }
   }
@@ -190,7 +200,9 @@ const requestTranslation = async (
   }
 
   bumpAutoCloseIgnore(250);
-  showTranslationLoading(language);
+  const definitionAvailable = typeof definition === "string" && definition.trim().length > 0;
+  const preserveDefinitionArea = !definitionAvailable && definitionBackfillEnabled;
+  showTranslationLoading(language, { definitionAvailable });
 
   const response = await sendMessage<TranslationResponse>({
     type: MessageTypes.TranslationRequest,
@@ -209,7 +221,10 @@ const requestTranslation = async (
   }
 
   if (!response) {
-    showTranslationError("Translation unavailable. Reload the extension and try again.", language);
+    showTranslationError("Translation unavailable. Reload the extension and try again.", language, {
+      definitionAvailable,
+      preserveDefinitionArea
+    });
     return;
   }
 
@@ -219,24 +234,31 @@ const requestTranslation = async (
         translatedWord: response.translatedWord,
         translatedDefinition: response.translatedDefinition ?? null
       },
-      language
+      language,
+      { definitionAvailable, preserveDefinitionArea }
     );
     return;
   }
 
   if (response.error === "not_configured") {
-    showTranslationError("Translation not configured. Set an API key in Options.", language);
+    showTranslationError("Translation not configured. Set an API key in Options.", language, {
+      definitionAvailable,
+      preserveDefinitionArea
+    });
     return;
   }
 
-  showTranslationError(response.message ?? "Translation unavailable.", language);
+  showTranslationError(response.message ?? "Translation unavailable.", language, {
+    definitionAvailable,
+    preserveDefinitionArea
+  });
 };
 
 const requestDefinitionBackfill = async (sessionId: number, word: string, sourceLang: WordLanguage) => {
   if (sessionId !== lookupSessionId) {
     return;
   }
-  if (!translationEnabled) {
+  if (!translationEnabled || !definitionBackfillEnabled) {
     return;
   }
 
@@ -251,7 +273,7 @@ const requestDefinitionBackfill = async (sessionId: number, word: string, source
   if (sessionId !== lookupSessionId) {
     return;
   }
-  if (!translationEnabled) {
+  if (!translationEnabled || !definitionBackfillEnabled) {
     return;
   }
 
@@ -261,7 +283,7 @@ const requestDefinitionBackfill = async (sessionId: number, word: string, source
   }
 
   if (response.ok) {
-    showGeneratedDefinitionResult(response);
+    showGeneratedDefinitionResult(response, { showDefinitionTranslation: definitionTranslationEnabled });
     return;
   }
 
@@ -276,6 +298,8 @@ const requestDefinitionBackfill = async (sessionId: number, word: string, source
 const syncTranslationEnabledState = async () => {
   const settings = await readTranslationSettings();
   translationEnabled = Boolean(settings.enabled);
+  definitionBackfillEnabled = Boolean(settings.definitionBackfillEnabled);
+  definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
   const lookup = latestLookup;
   if (!translationEnabled && lookup && lookup.sessionId === lookupSessionId && isOverlayOpen()) {
     resetTranslationUi(lookup.definition, lookup.language);

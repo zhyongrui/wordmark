@@ -9,6 +9,8 @@ type TranslationSettings = {
   singleDirection: "EN->ZH" | "ZH->EN";
   dualPair: "EN<->ZH";
   lastDirection: "EN->ZH" | "ZH->EN";
+  definitionBackfillEnabled: boolean;
+  definitionTranslationEnabled: boolean;
 };
 
 let translationSettings: TranslationSettings = {
@@ -17,7 +19,9 @@ let translationSettings: TranslationSettings = {
   mode: "single",
   singleDirection: "EN->ZH",
   dualPair: "EN<->ZH",
-  lastDirection: "EN->ZH"
+  lastDirection: "EN->ZH",
+  definitionBackfillEnabled: false,
+  definitionTranslationEnabled: false
 };
 
 let words: WordEntry[] = [];
@@ -174,7 +178,9 @@ describe("popup direction filtering", () => {
       mode: "single",
       singleDirection: "EN->ZH",
       dualPair: "EN<->ZH",
-      lastDirection: "EN->ZH"
+      lastDirection: "EN->ZH",
+      definitionBackfillEnabled: false,
+      definitionTranslationEnabled: false
     };
     words = [
       buildWord({ normalizedWord: "hello", displayWord: "hello", wordZh: "你好" }),
@@ -203,7 +209,9 @@ describe("popup direction filtering", () => {
       mode: "dual",
       singleDirection: "EN->ZH",
       dualPair: "EN<->ZH",
-      lastDirection: "ZH->EN"
+      lastDirection: "ZH->EN",
+      definitionBackfillEnabled: false,
+      definitionTranslationEnabled: false
     };
 
     const elements = installMockDom();
