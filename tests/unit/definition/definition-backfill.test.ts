@@ -31,7 +31,7 @@ describe("definition backfill handler", () => {
     await updateTranslationSettings({ enabled: true, providerId: "gemini" });
     await setTranslationApiKey("gemini", "AIzaFakeKeyForTest");
 
-    generateDefinition.mockResolvedValue({ ok: true, definitionEn: "A fruit." });
+    generateDefinition.mockResolvedValue({ ok: true, definitionText: "A fruit.", definitionLang: "en" });
     handleTranslationRequest.mockResolvedValue({ ok: true, translatedWord: "苹果", translatedDefinition: "一种水果。" });
 
     const first = await handleDefinitionBackfillRequest({ word: "apple" });
@@ -40,5 +40,22 @@ describe("definition backfill handler", () => {
     expect(first.ok).toBe(true);
     expect(second.ok).toBe(true);
     expect(generateDefinition).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns zh definitions with en translation for Chinese source words", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "gemini" });
+    await setTranslationApiKey("gemini", "AIzaFakeKeyForTest");
+
+    generateDefinition.mockResolvedValue({ ok: true, definitionText: "一种问候语。", definitionLang: "zh" });
+    handleTranslationRequest.mockResolvedValue({ ok: true, translatedWord: "hello", translatedDefinition: "A greeting." });
+
+    const response = await handleDefinitionBackfillRequest({ word: "你好" });
+
+    expect(response.ok).toBe(true);
+    if (response.ok) {
+      expect(response.definitionSourceLang).toBe("zh");
+      expect(response.definitionZh).toBe("一种问候语。");
+      expect(response.definitionEn).toBe("A greeting.");
+    }
   });
 });

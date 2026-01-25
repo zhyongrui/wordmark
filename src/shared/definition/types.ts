@@ -1,14 +1,18 @@
 export const MAX_GENERATED_DEFINITION_CHARS = 240;
 
+export type DefinitionLanguage = "en" | "zh";
+
 export type DefinitionRequest = {
   word: string;
+  sourceLang: DefinitionLanguage;
 };
 
 export type DefinitionErrorCode = "offline" | "quota_exceeded" | "timeout" | "provider_error";
 
 export type DefinitionSuccess = {
   ok: true;
-  definitionEn: string;
+  definitionText: string;
+  definitionLang: DefinitionLanguage;
 };
 
 export type DefinitionError = {

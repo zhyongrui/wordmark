@@ -637,6 +637,19 @@ const normalizeEnglishDefinition = (definition: string | null): string => {
   return value ? value : "Definition unavailable.";
 };
 
+const setDefinitionLabels = (overlay: OverlayElements, sourceLang: WordLanguage) => {
+  if (sourceLang === "zh") {
+    overlay.translationTitle.textContent = "Chinese definition";
+    overlay.translationWordLabel.textContent = "Definition (ZH)";
+    overlay.translationDefinitionLabel.textContent = "Definition (EN)";
+    return;
+  }
+
+  overlay.translationTitle.textContent = "English definition";
+  overlay.translationWordLabel.textContent = "Definition (EN)";
+  overlay.translationDefinitionLabel.textContent = "Definition (ZH)";
+};
+
 export const resetTranslationUi = (englishDefinition: string | null, sourceLang: WordLanguage = "en") => {
   const overlay = getExistingOverlay();
   if (!overlay) {
@@ -673,8 +686,7 @@ export const showTranslationLoading = (sourceLang: WordLanguage = "en") => {
   const englishDefinitionText = normalizeEnglishDefinition(overlay.definition.textContent);
 
   overlay.translation.hidden = false;
-  overlay.translationTitle.textContent = "English definition";
-  overlay.translationWordLabel.textContent = "Definition (EN)";
+  setDefinitionLabels(overlay, sourceLang);
   overlay.translationWord.textContent = englishDefinitionText;
 
   overlay.definition.textContent = "Translating…";
@@ -686,14 +698,14 @@ export const showTranslationLoading = (sourceLang: WordLanguage = "en") => {
   overlay.translationStatus.textContent = "";
 };
 
-export const showGeneratedDefinitionLoading = () => {
+export const showGeneratedDefinitionLoading = (sourceLang: WordLanguage = "en") => {
   const overlay = getExistingOverlay();
   if (!overlay) {
     return;
   }
 
   overlay.translation.hidden = false;
-  overlay.translationTitle.textContent = "English definition";
+  setDefinitionLabels(overlay, sourceLang);
   overlay.translationWord.textContent = "Loading…";
   overlay.translationDefinitionLabel.style.display = "none";
   overlay.translationDefinition.style.display = "none";
@@ -756,12 +768,6 @@ export const showTranslationResult = (
 
   if (sourceLang === "zh") {
     const translatedWord = result.translatedWord.trim();
-    overlay.translation.hidden = true;
-    overlay.translationWord.textContent = "";
-    overlay.translationDefinitionLabel.style.display = "none";
-    overlay.translationDefinition.style.display = "none";
-    overlay.translationDefinition.textContent = "";
-    overlay.translationStatus.textContent = "";
     overlay.definition.textContent = translatedWord || "Translation unavailable.";
     return;
   }
@@ -803,12 +809,6 @@ export const showTranslationError = (message: string, sourceLang: WordLanguage =
   if (sourceLang === "zh") {
     const trimmed = message.trim();
     const includeRetryHint = !/not configured/i.test(trimmed) && !/shortcut again to retry/i.test(trimmed);
-    overlay.translation.hidden = true;
-    overlay.translationWord.textContent = "";
-    overlay.translationDefinitionLabel.style.display = "none";
-    overlay.translationDefinition.style.display = "none";
-    overlay.translationDefinition.textContent = "";
-    overlay.translationStatus.textContent = "";
     overlay.definition.textContent = includeRetryHint ? `${trimmed} Press the shortcut again to retry.` : trimmed;
     return;
   }
@@ -830,7 +830,8 @@ export const showTranslationError = (message: string, sourceLang: WordLanguage =
 };
 
 export const showGeneratedDefinitionResult = (result: {
-  definitionEn: string;
+  definitionSourceLang: WordLanguage;
+  definitionEn: string | null;
   definitionZh: string | null;
   definitionSource: import("../shared/messages").DefinitionSource;
 }) => {
@@ -840,14 +841,28 @@ export const showGeneratedDefinitionResult = (result: {
   }
 
   overlay.translation.hidden = false;
-  overlay.translationTitle.textContent = "English definition";
+  setDefinitionLabels(overlay, result.definitionSourceLang);
 
-  overlay.translationWord.textContent = normalizeEnglishDefinition(result.definitionEn);
+  const sourceDefinition =
+    result.definitionSourceLang === "en"
+      ? normalizeEnglishDefinition(result.definitionEn)
+      : typeof result.definitionZh === "string" && result.definitionZh.trim()
+        ? result.definitionZh.trim()
+        : "Definition unavailable.";
 
-  if (typeof result.definitionZh === "string" && result.definitionZh.trim()) {
+  overlay.translationWord.textContent = sourceDefinition;
+
+  const translatedDefinition =
+    result.definitionSourceLang === "en"
+      ? result.definitionZh
+      : typeof result.definitionEn === "string" && result.definitionEn.trim()
+        ? result.definitionEn.trim()
+        : null;
+
+  if (typeof translatedDefinition === "string" && translatedDefinition.trim()) {
     overlay.translationDefinitionLabel.style.display = "block";
     overlay.translationDefinition.style.display = "block";
-    overlay.translationDefinition.textContent = result.definitionZh.trim();
+    overlay.translationDefinition.textContent = translatedDefinition.trim();
     overlay.translationStatus.textContent = "";
   } else {
     overlay.translationDefinitionLabel.style.display = "none";
@@ -857,14 +872,14 @@ export const showGeneratedDefinitionResult = (result: {
   }
 };
 
-export const showGeneratedDefinitionError = (message: string) => {
+export const showGeneratedDefinitionError = (message: string, sourceLang: WordLanguage = "en") => {
   const overlay = getExistingOverlay();
   if (!overlay) {
     return;
   }
 
   overlay.translation.hidden = false;
-  overlay.translationTitle.textContent = "English definition";
+  setDefinitionLabels(overlay, sourceLang);
   overlay.translationWord.textContent = "Definition unavailable.";
   overlay.translationDefinitionLabel.style.display = "none";
   overlay.translationDefinition.style.display = "none";

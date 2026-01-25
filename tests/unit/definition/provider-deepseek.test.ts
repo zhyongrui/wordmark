@@ -37,18 +37,25 @@ describe('deepseek definition provider', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const response = await deepseekDefinitionProvider.generateDefinition({ word: 'apple' }, 'test-key');
+    const response = await deepseekDefinitionProvider.generateDefinition(
+      { word: 'apple', sourceLang: 'en' },
+      'test-key',
+    );
 
     expect(response.ok).toBe(true);
     if (response.ok) {
-      expect(response.definitionEn).toBe('A fruit.');
+      expect(response.definitionText).toBe('A fruit.');
+      expect(response.definitionLang).toBe('en');
     }
   });
 
   it('returns provider_error when config is missing', async () => {
     await clearDeepSeekConfig();
 
-    const response = await deepseekDefinitionProvider.generateDefinition({ word: 'apple' }, 'test-key');
+    const response = await deepseekDefinitionProvider.generateDefinition(
+      { word: 'apple', sourceLang: 'en' },
+      'test-key',
+    );
 
     expect(response.ok).toBe(false);
     if (!response.ok) {
@@ -65,7 +72,10 @@ describe('deepseek definition provider', () => {
     const fetchMock = vi.fn(async () => ({ ok: false, status: 429 }) as unknown as Response);
     vi.stubGlobal('fetch', fetchMock);
 
-    const response = await deepseekDefinitionProvider.generateDefinition({ word: 'apple' }, 'test-key');
+    const response = await deepseekDefinitionProvider.generateDefinition(
+      { word: 'apple', sourceLang: 'en' },
+      'test-key',
+    );
 
     expect(response.ok).toBe(false);
     if (!response.ok) {
@@ -73,4 +83,3 @@ describe('deepseek definition provider', () => {
     }
   });
 });
-

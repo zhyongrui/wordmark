@@ -54,8 +54,10 @@ vi.mock("../../../src/content/lookup-overlay", () => {
     setOverlayHideListener: vi.fn(),
     setTranslateAvailable: vi.fn(),
     shouldIgnoreAutoClose: vi.fn(() => false),
+    showGeneratedDefinitionError: vi.fn(),
     showTranslationError: vi.fn(),
     showTranslationLoading,
+    showGeneratedDefinitionLoading: vi.fn(),
     showLookupOverlay,
     showTranslationResult: vi.fn(),
     showNotice

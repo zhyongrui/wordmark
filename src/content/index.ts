@@ -170,8 +170,8 @@ const triggerLookup = async () => {
   };
   if (translationEnabled) {
     void requestTranslation(sessionId, entry.displayWord, entry.definition, selectionLanguage);
-    if (entry.definition == null && selectionLanguage === "en") {
-      void requestDefinitionBackfill(sessionId, entry.displayWord);
+    if (entry.definition == null && (selectionLanguage === "en" || selectionLanguage === "zh")) {
+      void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
     }
   }
 };
@@ -191,9 +191,6 @@ const requestTranslation = async (
 
   bumpAutoCloseIgnore(250);
   showTranslationLoading(language);
-  if (definition == null && language === "en") {
-    showGeneratedDefinitionLoading();
-  }
 
   const response = await sendMessage<TranslationResponse>({
     type: MessageTypes.TranslationRequest,
@@ -235,7 +232,7 @@ const requestTranslation = async (
   showTranslationError(response.message ?? "Translation unavailable.", language);
 };
 
-const requestDefinitionBackfill = async (sessionId: number, word: string) => {
+const requestDefinitionBackfill = async (sessionId: number, word: string, sourceLang: WordLanguage) => {
   if (sessionId !== lookupSessionId) {
     return;
   }
@@ -244,7 +241,7 @@ const requestDefinitionBackfill = async (sessionId: number, word: string) => {
   }
 
   bumpAutoCloseIgnore(250);
-  showGeneratedDefinitionLoading();
+  showGeneratedDefinitionLoading(sourceLang);
 
   const response = await sendMessage<DefinitionBackfillResponse>({
     type: MessageTypes.DefinitionBackfillRequest,
@@ -259,7 +256,7 @@ const requestDefinitionBackfill = async (sessionId: number, word: string) => {
   }
 
   if (!response) {
-    showGeneratedDefinitionError("Definition unavailable. Reload the extension and try again.");
+    showGeneratedDefinitionError("Definition unavailable. Reload the extension and try again.", sourceLang);
     return;
   }
 
@@ -269,11 +266,11 @@ const requestDefinitionBackfill = async (sessionId: number, word: string) => {
   }
 
   if (response.error === "not_configured") {
-    showGeneratedDefinitionError("Definition not configured. Set an API key in Options.");
+    showGeneratedDefinitionError("Definition not configured. Set an API key in Options.", sourceLang);
     return;
   }
 
-  showGeneratedDefinitionError(getDefinitionBackfillErrorMessage(response.error));
+  showGeneratedDefinitionError(getDefinitionBackfillErrorMessage(response.error), sourceLang);
 };
 
 const syncTranslationEnabledState = async () => {

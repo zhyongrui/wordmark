@@ -36,18 +36,19 @@ describe("openai definition provider", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await openaiDefinitionProvider.generateDefinition({ word: "apple" }, "test-key");
+    const response = await openaiDefinitionProvider.generateDefinition({ word: "apple", sourceLang: "en" }, "test-key");
 
     expect(response.ok).toBe(true);
     if (response.ok) {
-      expect(response.definitionEn).toBe("A fruit.");
+      expect(response.definitionText).toBe("A fruit.");
+      expect(response.definitionLang).toBe("en");
     }
   });
 
   it("returns provider_error when config is missing", async () => {
     await clearOpenAIConfig();
 
-    const response = await openaiDefinitionProvider.generateDefinition({ word: "apple" }, "test-key");
+    const response = await openaiDefinitionProvider.generateDefinition({ word: "apple", sourceLang: "en" }, "test-key");
 
     expect(response.ok).toBe(false);
     if (!response.ok) {
@@ -64,7 +65,7 @@ describe("openai definition provider", () => {
     const fetchMock = vi.fn(async () => ({ ok: false, status: 429 }) as unknown as Response);
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await openaiDefinitionProvider.generateDefinition({ word: "apple" }, "test-key");
+    const response = await openaiDefinitionProvider.generateDefinition({ word: "apple", sourceLang: "en" }, "test-key");
 
     expect(response.ok).toBe(false);
     if (!response.ok) {

@@ -9,6 +9,7 @@ let lastDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
 const showLookupOverlay = vi.fn();
 const showTranslationLoading = vi.fn();
 const showGeneratedDefinitionError = vi.fn();
+const showGeneratedDefinitionResult = vi.fn();
 
 vi.mock("../../../src/shared/translation/settings", () => {
   return {
@@ -55,7 +56,7 @@ vi.mock("../../../src/content/lookup-overlay", () => {
     shouldIgnoreAutoClose: vi.fn(() => false),
     showGeneratedDefinitionError,
     showGeneratedDefinitionLoading: vi.fn(),
-    showGeneratedDefinitionResult: vi.fn(),
+    showGeneratedDefinitionResult,
     showTranslationError: vi.fn(),
     showTranslationLoading,
     showLookupOverlay,
@@ -66,7 +67,7 @@ vi.mock("../../../src/content/lookup-overlay", () => {
 
 const flushPromises = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
-const installMinimalDom = () => {
+const installMinimalDom = (selectionText = "apple") => {
   (globalThis as unknown as { document?: unknown }).document = {
     getElementById: vi.fn(() => null),
     addEventListener: vi.fn(),
@@ -74,7 +75,7 @@ const installMinimalDom = () => {
   };
 
   (globalThis as unknown as { window?: unknown }).window = {
-    getSelection: () => ({ toString: () => "apple", rangeCount: 0, isCollapsed: true }),
+    getSelection: () => ({ toString: () => selectionText, rangeCount: 0, isCollapsed: true }),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn()
   };
@@ -137,6 +138,7 @@ beforeEach(() => {
   showLookupOverlay.mockClear();
   showTranslationLoading.mockClear();
   showGeneratedDefinitionError.mockClear();
+  showGeneratedDefinitionResult.mockClear();
   translationMode = "single";
   singleDirection = "EN->ZH";
   lastDirection = "EN->ZH";
@@ -175,5 +177,46 @@ describe("Spec 003 definition backfill fallback UI", () => {
     expect(showGeneratedDefinitionError).toHaveBeenCalled();
     const message = showGeneratedDefinitionError.mock.calls[0]?.[0] ?? "";
     expect(message).toBe("Definition unavailable.");
+  });
+
+  it("passes zh definitions through to the overlay in ZH->EN flow", async () => {
+    translationEnabled = true;
+    translationMode = "dual";
+    installMinimalDom("你好");
+
+    const chromeRuntime = installFakeChromeRuntime({
+      onLookup: () => ({
+        ok: true,
+        entry: {
+          displayWord: "你好",
+          definition: null,
+          definitionSource: "local",
+          pronunciationAvailable: true
+        }
+      }),
+      onTranslate: () => ({ ok: true, translatedWord: "hello" }),
+      onBackfill: () => ({
+        ok: true,
+        definitionSourceLang: "zh",
+        definitionZh: "一种问候语。",
+        definitionEn: "A greeting.",
+        definitionSource: "generated"
+      })
+    });
+
+    await import("../../../src/content/index");
+
+    chromeRuntime.dispatchLookupTrigger();
+    await flushPromises();
+    await flushPromises();
+
+    expect(showGeneratedDefinitionResult).toHaveBeenCalled();
+    expect(showGeneratedDefinitionResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        definitionSourceLang: "zh",
+        definitionZh: "一种问候语。",
+        definitionEn: "A greeting."
+      })
+    );
   });
 });

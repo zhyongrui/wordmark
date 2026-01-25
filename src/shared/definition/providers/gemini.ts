@@ -5,7 +5,7 @@ import {
   type DefinitionRequest,
   type DefinitionResponse
 } from "../types";
-import { sanitizeEnglishDefinitionText } from "../sanitize";
+import { sanitizeChineseDefinitionText, sanitizeEnglishDefinitionText } from "../sanitize";
 import { getGeminiConfig } from "../../translation/gemini";
 import type { DefinitionProvider } from "./provider";
 
@@ -162,8 +162,9 @@ const attachAbortSignal = (controller: AbortController, upstreamSignal: AbortSig
 };
 
 const buildPrompt = (request: DefinitionRequest): string => {
+  const languageLabel = request.sourceLang === "zh" ? "Chinese" : "English";
   return [
-    "Write a short English dictionary-style definition for the given word.",
+    `Write a short ${languageLabel} dictionary-style definition for the given word.`,
     "Constraints:",
     "- Plain text only (no Markdown, no code fences).",
     "- 1–2 sentences.",
@@ -190,7 +191,7 @@ export const geminiDefinitionProvider: DefinitionProvider = {
     const timeoutId = globalThis.setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
     try {
-      const prompt = buildPrompt({ word });
+      const prompt = buildPrompt({ word, sourceLang: request.sourceLang });
       const requestBody = JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.2 }
@@ -236,7 +237,10 @@ export const geminiDefinitionProvider: DefinitionProvider = {
           return createDefinitionError("provider_error", "Definition unavailable (unexpected provider response).");
         }
 
-        const sanitized = sanitizeEnglishDefinitionText(candidate, { maxChars: 240 });
+        const sanitized =
+          request.sourceLang === "zh"
+            ? sanitizeChineseDefinitionText(candidate, { maxChars: 240 })
+            : sanitizeEnglishDefinitionText(candidate, { maxChars: 240 });
         if (!sanitized) {
           return createDefinitionError("provider_error", "Definition unavailable (empty provider response).");
         }
@@ -244,7 +248,7 @@ export const geminiDefinitionProvider: DefinitionProvider = {
         if (options?.cache !== false) {
           cachedModelSelection = { baseUrl, modelId };
         }
-        return { ok: true, definitionEn: sanitized };
+        return { ok: true, definitionText: sanitized, definitionLang: request.sourceLang };
       };
 
       const overrideConfig = await getGeminiConfig();

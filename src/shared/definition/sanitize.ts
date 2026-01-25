@@ -58,3 +58,18 @@ export const sanitizeEnglishDefinitionText = (raw: string, options?: { maxChars?
   return text ? text : null;
 };
 
+export const sanitizeChineseDefinitionText = (raw: string, options?: { maxChars?: number }): string | null => {
+  if (typeof raw !== "string") {
+    return null;
+  }
+
+  const maxChars = options?.maxChars ?? MAX_GENERATED_DEFINITION_CHARS;
+  let text = raw;
+  text = stripCodeFences(text);
+  text = stripSurroundingQuotes(text);
+  text = stripLeadingMarker(text);
+  text = collapseWhitespace(text);
+  text = clampText(text, maxChars);
+
+  return text ? text : null;
+};

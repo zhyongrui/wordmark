@@ -5,7 +5,7 @@ import {
   type DefinitionRequest,
   type DefinitionResponse
 } from "../types";
-import { sanitizeEnglishDefinitionText } from "../sanitize";
+import { sanitizeChineseDefinitionText, sanitizeEnglishDefinitionText } from "../sanitize";
 import { getMoonshotConfig } from "../../translation/moonshot";
 import type { DefinitionProvider } from "./provider";
 
@@ -24,9 +24,10 @@ const readErrorSnippet = async (response: Response): Promise<string | null> => {
   }
 };
 
-const buildSystemPrompt = (): string => {
+const buildSystemPrompt = (sourceLang: DefinitionRequest["sourceLang"]): string => {
+  const languageLabel = sourceLang === "zh" ? "Chinese" : "English";
   return [
-    "Write a short English dictionary-style definition for the given word.",
+    `Write a short ${languageLabel} dictionary-style definition for the given word.`,
     "Constraints:",
     "- Plain text only (no Markdown, no code fences).",
     "- 1-2 sentences.",
@@ -107,8 +108,8 @@ export const moonshotDefinitionProvider: DefinitionProvider = {
       const requestBody = JSON.stringify({
         model: config.modelId,
         messages: [
-          { role: "system", content: buildSystemPrompt() },
-          { role: "user", content: buildUserPrompt({ word }) }
+          { role: "system", content: buildSystemPrompt(request.sourceLang) },
+          { role: "user", content: buildUserPrompt({ word, sourceLang: request.sourceLang }) }
         ],
         temperature: 0.2
       });
@@ -138,12 +139,15 @@ export const moonshotDefinitionProvider: DefinitionProvider = {
         return createDefinitionError("provider_error", "Definition unavailable (unexpected provider response).");
       }
 
-      const sanitized = sanitizeEnglishDefinitionText(candidate, { maxChars: 240 });
+      const sanitized =
+        request.sourceLang === "zh"
+          ? sanitizeChineseDefinitionText(candidate, { maxChars: 240 })
+          : sanitizeEnglishDefinitionText(candidate, { maxChars: 240 });
       if (!sanitized) {
         return createDefinitionError("provider_error", "Definition unavailable (empty provider response).");
       }
 
-      return { ok: true, definitionEn: sanitized };
+      return { ok: true, definitionText: sanitized, definitionLang: request.sourceLang };
     } catch (error) {
       return createDefinitionError(mapUnknownErrorToDefinitionErrorCode(error));
     } finally {
@@ -152,4 +156,3 @@ export const moonshotDefinitionProvider: DefinitionProvider = {
     }
   }
 };
-

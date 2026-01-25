@@ -25,7 +25,13 @@ export type DefinitionBackfillRequestPayload = {
 };
 
 export type DefinitionBackfillResponse =
-  | { ok: true; definitionEn: string; definitionZh: string | null; definitionSource: DefinitionSource }
+  | {
+      ok: true;
+      definitionSourceLang: "en" | "zh";
+      definitionEn: string | null;
+      definitionZh: string | null;
+      definitionSource: DefinitionSource;
+    }
   | {
       ok: false;
       error: "disabled" | "not_configured" | "offline" | "quota_exceeded" | "timeout" | "provider_error";

@@ -19,7 +19,7 @@ import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { handleTranslationRequest } from "./translation";
 
 const inSessionDeduper = createInSessionDeduper<DefinitionBackfillResponse>();
-const definitionEnCache = createInMemoryTtlCache<string>({ ttlMs: 20 * 60 * 1000 });
+const definitionTextCache = createInMemoryTtlCache<string>({ ttlMs: 20 * 60 * 1000 });
 
 const getProvider = (providerId: string) => {
   switch (providerId) {
@@ -42,8 +42,48 @@ const getProvider = (providerId: string) => {
   }
 };
 
-const makeCacheKey = (providerId: string, normalizedWord: string) =>
-  `defbackfill|${providerId}|zh|${normalizedWord}|short-v1`;
+const makeCacheKey = (providerId: string, sourceLang: "en" | "zh", normalizedWord: string) =>
+  `defbackfill|${providerId}|${sourceLang}|${normalizedWord}|short-v1`;
+
+const resolveDefinitionTranslation = async (
+  sourceLang: "en" | "zh",
+  word: string,
+  definitionText: string
+): Promise<string | null> => {
+  const translation = await handleTranslationRequest({
+    word,
+    definition: definitionText,
+    targetLang: sourceLang === "en" ? "zh" : "en"
+  });
+
+  return translation.ok && typeof translation.translatedDefinition === "string" && translation.translatedDefinition.trim()
+    ? translation.translatedDefinition.trim()
+    : null;
+};
+
+const toBackfillResponse = (input: {
+  sourceLang: "en" | "zh";
+  definitionText: string;
+  translatedDefinition: string | null;
+}): DefinitionBackfillResponse => {
+  if (input.sourceLang === "en") {
+    return {
+      ok: true,
+      definitionSourceLang: "en",
+      definitionEn: input.definitionText,
+      definitionZh: input.translatedDefinition,
+      definitionSource: "generated"
+    };
+  }
+
+  return {
+    ok: true,
+    definitionSourceLang: "zh",
+    definitionEn: input.translatedDefinition,
+    definitionZh: input.definitionText,
+    definitionSource: "generated"
+  };
+};
 
 export const handleDefinitionBackfillRequest = async (
   payload: DefinitionBackfillRequestPayload
@@ -56,7 +96,7 @@ export const handleDefinitionBackfillRequest = async (
   if (!selection) {
     return { ok: false, error: "provider_error", message: "Definition unavailable (invalid word)." };
   }
-  if (selection.language !== "en") {
+  if (selection.language !== "en" && selection.language !== "zh") {
     return { ok: false, error: "provider_error", message: "Definition unavailable." };
   }
 
@@ -112,70 +152,49 @@ export const handleDefinitionBackfillRequest = async (
     }
   }
 
-  const cacheKey = makeCacheKey(provider.id, selection.normalizedWord);
-  const cachedDefinitionEn = definitionEnCache.get(cacheKey);
-  if (cachedDefinitionEn) {
-    const translation = await handleTranslationRequest({
-      word: selection.normalizedWord,
-      definition: cachedDefinitionEn,
-      targetLang: "zh"
-    });
-    const definitionZh =
-      translation.ok && typeof translation.translatedDefinition === "string" && translation.translatedDefinition.trim()
-        ? translation.translatedDefinition.trim()
-        : null;
-
-    return {
-      ok: true,
-      definitionEn: cachedDefinitionEn,
-      definitionSource: "generated",
-      definitionZh
-    };
+  const sourceLang = selection.language;
+  const cacheKey = makeCacheKey(provider.id, sourceLang, selection.normalizedWord);
+  const cachedDefinitionText = definitionTextCache.get(cacheKey);
+  if (cachedDefinitionText) {
+    const translatedDefinition = await resolveDefinitionTranslation(
+      sourceLang,
+      selection.normalizedWord,
+      cachedDefinitionText
+    );
+    return toBackfillResponse({ sourceLang, definitionText: cachedDefinitionText, translatedDefinition });
   }
 
   return await inSessionDeduper.dedupe(cacheKey, async () => {
-    const cachedAgain = definitionEnCache.get(cacheKey);
+    const cachedAgain = definitionTextCache.get(cacheKey);
     if (cachedAgain) {
-      const translation = await handleTranslationRequest({
-        word: selection.normalizedWord,
-        definition: cachedAgain,
-        targetLang: "zh"
-      });
-      const definitionZh =
-        translation.ok && typeof translation.translatedDefinition === "string" && translation.translatedDefinition.trim()
-          ? translation.translatedDefinition.trim()
-          : null;
-
-      return {
-        ok: true,
-        definitionEn: cachedAgain,
-        definitionSource: "generated",
-        definitionZh
-      };
+      const translatedDefinition = await resolveDefinitionTranslation(
+        sourceLang,
+        selection.normalizedWord,
+        cachedAgain
+      );
+      return toBackfillResponse({ sourceLang, definitionText: cachedAgain, translatedDefinition });
     }
 
-    const generated = await provider.generateDefinition({ word: selection.normalizedWord }, apiKey);
+    const generated = await provider.generateDefinition(
+      { word: selection.normalizedWord, sourceLang },
+      apiKey
+    );
     if (!generated.ok) {
       return { ok: false, error: generated.error, message: generated.message };
     }
 
-    definitionEnCache.set(cacheKey, generated.definitionEn);
+    definitionTextCache.set(cacheKey, generated.definitionText);
 
-    const translation = await handleTranslationRequest({
-      word: selection.normalizedWord,
-      definition: generated.definitionEn,
-      targetLang: "zh"
+    const translatedDefinition = await resolveDefinitionTranslation(
+      sourceLang,
+      selection.normalizedWord,
+      generated.definitionText
+    );
+
+    return toBackfillResponse({
+      sourceLang,
+      definitionText: generated.definitionText,
+      translatedDefinition
     });
-    const definitionZh =
-      translation.ok && typeof translation.translatedDefinition === "string" && translation.translatedDefinition.trim()
-        ? translation.translatedDefinition.trim()
-        : null;
-
-    return {
-      ok: true,
-      definitionEn: generated.definitionEn,
-      definitionSource: "generated",
-      definitionZh
-    };
   });
 };
