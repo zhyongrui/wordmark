@@ -45,6 +45,7 @@
         border-radius: 10px;
         padding: 10px 12px;
         width: 240px;
+        box-sizing: border-box;
         align-self: flex-start;
       }
       .translation-toggle label {
@@ -109,13 +110,10 @@
       .segmented button {
         border: none;
         background: transparent;
-        padding: 8px 18px;
+        padding: 8px 20px;
         font-size: 13px;
         cursor: pointer;
         color: #111827;
-      }
-      .segmented button + button {
-        border-left: 1px solid #d1d5db;
       }
       .segmented button[aria-pressed="true"] {
         background: #111827;
