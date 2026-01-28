@@ -101,7 +101,7 @@ const getEntryLanguage = (entry: WordEntry): WordLanguage | null => {
 };
 
 const getActiveDirection = (): "EN->ZH" | "ZH->EN" => {
-  return translationMode === "single" ? singleDirection : listDirection;
+  return listDirection;
 };
 
 const filterByDirection = (entries: WordEntry[]) => {
@@ -119,8 +119,7 @@ const filterByDirection = (entries: WordEntry[]) => {
 };
 
 const updateDirectionToggle = () => {
-  const isDual = translationMode === "dual";
-  directionToggle.hidden = !isDual;
+  directionToggle.hidden = false;
   directionToggle.dataset.direction = listDirection;
   directionButtons.forEach((button) => {
     const direction = button.dataset.direction;
@@ -310,9 +309,6 @@ settingsButton.addEventListener("click", () => {
 
 directionButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    if (translationMode !== "dual") {
-      return;
-    }
     const direction = button.dataset.direction;
     if (direction === "EN->ZH" || direction === "ZH->EN") {
       listDirection = direction;
