@@ -1,6 +1,14 @@
 import { MessageTypes } from "../shared/messages";
 import type { Preferences, WordEntry } from "../shared/storage/schema";
+import {
+  formatDirectionLabel,
+  getDirectionDetails,
+  getDualPairDirections,
+  getLanguageCode,
+  getOppositeDirection
+} from "../shared/translation/directions";
 import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/translation/settings";
+import type { TranslationDirection } from "../shared/translation/settings";
 import { filterWordEntries, sortWordEntries } from "../shared/word/list";
 import { detectWordLanguage, type WordLanguage } from "../shared/word/normalize";
 
@@ -65,9 +73,10 @@ if (
 let words: WordEntry[] = [];
 let highlightEnabled = true;
 let translationMode: "single" | "dual" = "single";
-let singleDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
-let listDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
-let lastDirectionFromSettings: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let singleDirection: TranslationDirection = "EN->ZH";
+let listDirection: TranslationDirection = "EN->ZH";
+let lastDirectionFromSettings: TranslationDirection = "EN->ZH";
+let dualDirections: [TranslationDirection, TranslationDirection] = ["EN->ZH", "ZH->EN"];
 
 const formatCount = (count: number) => `${count} ${count === 1 ? "time" : "times"}`;
 
@@ -100,31 +109,98 @@ const getEntryLanguage = (entry: WordEntry): WordLanguage | null => {
   return detectWordLanguage(entry.normalizedWord) ?? detectWordLanguage(entry.displayWord);
 };
 
-const getActiveDirection = (): "EN->ZH" | "ZH->EN" => {
+const getLabelForEntry = (entry: WordEntry, language: WordLanguage | null): string => {
+  if (language === "en") {
+    return typeof entry.wordZh === "string" && entry.wordZh.trim() ? entry.wordZh.trim() : "";
+  }
+  if (language === "zh") {
+    return typeof entry.wordEn === "string" && entry.wordEn.trim() ? entry.wordEn.trim() : "";
+  }
+  if (language === "ja") {
+    return typeof entry.wordJa === "string" && entry.wordJa.trim() ? entry.wordJa.trim() : "";
+  }
+  return (
+    typeof entry.wordZh === "string" && entry.wordZh.trim()
+      ? entry.wordZh.trim()
+      : typeof entry.wordEn === "string" && entry.wordEn.trim()
+        ? entry.wordEn.trim()
+        : typeof entry.wordJa === "string" && entry.wordJa.trim()
+          ? entry.wordJa.trim()
+          : ""
+  );
+};
+
+const getActiveDirection = (): TranslationDirection => {
   return listDirection;
 };
 
 const filterByDirection = (entries: WordEntry[]) => {
   const activeDirection = getActiveDirection();
+  const { source: sourceLanguage, target: targetLanguage } = getDirectionDetails(activeDirection);
+
   return entries.filter((entry) => {
     const language = getEntryLanguage(entry);
     if (!language) {
       return true;
     }
-    if (activeDirection === "EN->ZH") {
-      return language === "en";
+
+    // Check if source language matches
+    if (language !== sourceLanguage) {
+      return false;
     }
-    return language === "zh";
+
+    // Check if the target language translation exists
+    if (targetLanguage === "zh") {
+      return typeof entry.wordZh === "string" && entry.wordZh.trim().length > 0;
+    }
+    if (targetLanguage === "en") {
+      return typeof entry.wordEn === "string" && entry.wordEn.trim().length > 0;
+    }
+    if (targetLanguage === "ja") {
+      return typeof entry.wordJa === "string" && entry.wordJa.trim().length > 0;
+    }
+
+    return false;
   });
 };
 
 const updateDirectionToggle = () => {
   directionToggle.hidden = false;
-  directionToggle.dataset.direction = listDirection;
-  directionButtons.forEach((button) => {
-    const direction = button.dataset.direction;
-    button.setAttribute("aria-pressed", String(direction === listDirection));
-  });
+  directionToggle.dataset.mode = translationMode;
+
+  if (translationMode === "single") {
+    // In single mode, arrow direction is fixed but users can toggle which word list to view
+    directionToggle.dataset.direction = singleDirection;
+    const details = getDirectionDetails(singleDirection);
+    const oppositeDirection = getOppositeDirection(singleDirection);
+
+    directionButtons.forEach((button, index) => {
+      if (index === 0) {
+        // First button: source language
+        button.dataset.direction = singleDirection;
+        button.textContent = getLanguageCode(details.source);
+        button.disabled = false;
+        button.setAttribute("aria-pressed", String(listDirection === singleDirection));
+      } else {
+        // Second button: target language
+        button.dataset.direction = oppositeDirection;
+        button.textContent = getLanguageCode(details.target);
+        button.disabled = false;
+        button.setAttribute("aria-pressed", String(listDirection === oppositeDirection));
+      }
+    });
+  } else {
+    // In dual mode, show both directions and enable interaction
+    directionToggle.dataset.direction = listDirection;
+    directionButtons.forEach((button, index) => {
+      const direction = dualDirections[index];
+      const sourceLanguage = getDirectionDetails(direction).source;
+      button.dataset.direction = direction;
+      button.textContent = getLanguageCode(sourceLanguage);
+      button.disabled = false;
+      button.setAttribute("aria-pressed", String(direction === listDirection));
+    });
+  }
 };
 
 const renderList = () => {
@@ -153,12 +229,8 @@ const renderList = () => {
     const word = document.createElement("div");
     word.className = "wordmark-word";
     word.textContent = entry.displayWord;
-    const label =
-      typeof entry.wordZh === "string" && entry.wordZh.trim()
-        ? entry.wordZh.trim()
-        : typeof entry.wordEn === "string" && entry.wordEn.trim()
-          ? entry.wordEn.trim()
-          : "";
+    const entryLanguage = getEntryLanguage(entry);
+    const label = getLabelForEntry(entry, entryLanguage);
     if (label) {
       const zh = document.createElement("span");
       zh.className = "wordmark-word-zh";
@@ -215,11 +287,20 @@ const refreshTranslationSettings = async () => {
   const modeChanged = settings.mode !== translationMode;
   translationMode = settings.mode;
   singleDirection = settings.singleDirection;
+  const nextDualDirections = getDualPairDirections(settings.dualPair);
+  const pairChanged =
+    nextDualDirections[0] !== dualDirections[0] || nextDualDirections[1] !== dualDirections[1];
+  dualDirections = nextDualDirections;
+
   if (translationMode === "single") {
     listDirection = singleDirection;
-  } else if (modeChanged || settings.lastDirection !== lastDirectionFromSettings) {
-    listDirection = settings.lastDirection;
+  } else {
+    const hasValidLastDirection = dualDirections.includes(settings.lastDirection);
+    if (modeChanged || pairChanged || !hasValidLastDirection || settings.lastDirection !== lastDirectionFromSettings) {
+      listDirection = hasValidLastDirection ? settings.lastDirection : dualDirections[0];
+    }
   }
+
   lastDirectionFromSettings = settings.lastDirection;
   updateDirectionToggle();
   renderList();
@@ -309,12 +390,13 @@ settingsButton.addEventListener("click", () => {
 
 directionButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    const direction = button.dataset.direction;
-    if (direction === "EN->ZH" || direction === "ZH->EN") {
-      listDirection = direction;
-      updateDirectionToggle();
-      renderList();
+    const direction = button.dataset.direction as TranslationDirection | undefined;
+    if (!direction) {
+      return;
     }
+    listDirection = direction;
+    updateDirectionToggle();
+    renderList();
   });
 });
 

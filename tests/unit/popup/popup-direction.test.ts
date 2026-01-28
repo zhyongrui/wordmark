@@ -1,17 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WordEntry } from "../../../src/shared/storage/schema";
 import { MessageTypes } from "../../../src/shared/messages";
-
-type TranslationSettings = {
-  enabled: boolean;
-  providerId: string;
-  mode: "single" | "dual";
-  singleDirection: "EN->ZH" | "ZH->EN";
-  dualPair: "EN<->ZH";
-  lastDirection: "EN->ZH" | "ZH->EN";
-  definitionBackfillEnabled: boolean;
-  definitionTranslationEnabled: boolean;
-};
+import type { TranslationSettings } from "../../../src/shared/translation/settings";
 
 let translationSettings: TranslationSettings = {
   enabled: true,
@@ -188,18 +178,47 @@ describe("popup direction filtering", () => {
     ];
   });
 
-  it("filters list by single EN->ZH direction and hides the toggle", async () => {
+  it("filters list by single EN->ZH direction and shows the current direction", async () => {
     const elements = installMockDom();
     installFakeChromeRuntime();
 
     await import("../../../src/popup/index");
     await flushPromises();
 
-    expect(elements["direction-toggle"].hidden).toBe(true);
+    expect(elements["direction-toggle"].hidden).toBe(false);
+    expect(elements["direction-toggle"].dataset.mode).toBe("single");
+    expect(elements["direction-toggle"].dataset.direction).toBe("EN->ZH");
     expect(elements["word-list"].children.length).toBe(1);
     expect(elements["word-count"].textContent).toBe("1 WORDS");
     const wordEl = findByClass(elements["word-list"].children[0], "wordmark-word");
     expect(wordEl?.textContent).toContain("hello");
+  });
+
+  it("allows toggling word list in single mode", async () => {
+    const elements = installMockDom();
+    installFakeChromeRuntime();
+
+    await import("../../../src/popup/index");
+    await flushPromises();
+
+    // Initially shows EN words (source language)
+    expect(elements["direction-toggle"].hidden).toBe(false);
+    expect(elements["direction-toggle"].dataset.mode).toBe("single");
+    expect(elements["direction-toggle"].dataset.direction).toBe("EN->ZH");
+    expect(elements["word-list"].children.length).toBe(1);
+    let wordEl = findByClass(elements["word-list"].children[0], "wordmark-word");
+    expect(wordEl?.textContent).toContain("hello");
+
+    // Click ZH button to show ZH words (target language)
+    const [, zhButton] = elements["direction-toggle"].children;
+    zhButton.click();
+
+    expect(elements["word-list"].children.length).toBe(1);
+    wordEl = findByClass(elements["word-list"].children[0], "wordmark-word");
+    expect(wordEl?.textContent).toContain("你好");
+
+    // Arrow direction should remain EN->ZH
+    expect(elements["direction-toggle"].dataset.direction).toBe("EN->ZH");
   });
 
   it("toggles list direction in dual mode", async () => {

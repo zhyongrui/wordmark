@@ -74,6 +74,11 @@ body {
   border-radius: 999px;
 }
 
+.wordmark-direction-button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 .wordmark-direction-arrow {
   display: inline-flex;
   align-items: center;
@@ -83,7 +88,9 @@ body {
   transition: transform 0.15s ease;
 }
 
-.wordmark-direction[data-direction="ZH->EN"] .wordmark-direction-arrow {
+.wordmark-direction[data-mode="dual"][data-direction="ZH->EN"] .wordmark-direction-arrow,
+.wordmark-direction[data-mode="dual"][data-direction="JA->EN"] .wordmark-direction-arrow,
+.wordmark-direction[data-mode="dual"][data-direction="JA->ZH"] .wordmark-direction-arrow {
   transform: rotate(180deg);
 }
 
