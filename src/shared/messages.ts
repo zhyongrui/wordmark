@@ -27,9 +27,10 @@ export type DefinitionBackfillRequestPayload = {
 export type DefinitionBackfillResponse =
   | {
       ok: true;
-      definitionSourceLang: "en" | "zh";
+      definitionSourceLang: "en" | "zh" | "ja";
       definitionEn: string | null;
       definitionZh: string | null;
+      definitionJa: string | null;
       definitionSource: DefinitionSource;
     }
   | {

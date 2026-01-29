@@ -1,8 +1,11 @@
-export type TranslationTargetLang = "zh" | "en";
+import type { WordLanguage } from "../word/normalize";
+
+export type TranslationTargetLang = "zh" | "en" | "ja";
 
 export type TranslationRequest = {
   word: string;
   definition?: string | null;
+  sourceLang: WordLanguage;
   targetLang: TranslationTargetLang;
 };
 

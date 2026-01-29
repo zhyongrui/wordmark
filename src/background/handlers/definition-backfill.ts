@@ -17,6 +17,9 @@ import { getQwenConfig } from "../../shared/translation/qwen";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { handleTranslationRequest } from "./translation";
+import { getDirectionDetails } from "../../shared/translation/directions";
+import type { TranslationTargetLang } from "../../shared/translation/types";
+import type { WordLanguage } from "../../shared/word/normalize";
 
 const inSessionDeduper = createInSessionDeduper<DefinitionBackfillResponse>();
 const definitionTextCache = createInMemoryTtlCache<string>({ ttlMs: 20 * 60 * 1000 });
@@ -42,18 +45,20 @@ const getProvider = (providerId: string) => {
   }
 };
 
-const makeCacheKey = (providerId: string, sourceLang: "en" | "zh", normalizedWord: string) =>
+const makeCacheKey = (providerId: string, sourceLang: "en" | "zh" | "ja", normalizedWord: string) =>
   `defbackfill|${providerId}|${sourceLang}|${normalizedWord}|short-v1`;
 
 const resolveDefinitionTranslation = async (
-  sourceLang: "en" | "zh",
+  sourceLang: WordLanguage,
+  targetLang: TranslationTargetLang,
   word: string,
   definitionText: string
 ): Promise<string | null> => {
   const translation = await handleTranslationRequest({
     word,
     definition: definitionText,
-    targetLang: sourceLang === "en" ? "zh" : "en"
+    sourceLang,
+    targetLang
   });
 
   return translation.ok && typeof translation.translatedDefinition === "string" && translation.translatedDefinition.trim()
@@ -62,27 +67,41 @@ const resolveDefinitionTranslation = async (
 };
 
 const toBackfillResponse = (input: {
-  sourceLang: "en" | "zh";
+  sourceLang: WordLanguage;
+  targetLang: TranslationTargetLang;
   definitionText: string;
   translatedDefinition: string | null;
 }): DefinitionBackfillResponse => {
-  if (input.sourceLang === "en") {
-    return {
-      ok: true,
-      definitionSourceLang: "en",
-      definitionEn: input.definitionText,
-      definitionZh: input.translatedDefinition,
-      definitionSource: "generated"
-    };
-  }
-
-  return {
+  const result: DefinitionBackfillResponse = {
     ok: true,
-    definitionSourceLang: "zh",
-    definitionEn: input.translatedDefinition,
-    definitionZh: input.definitionText,
+    definitionSourceLang: input.sourceLang,
+    definitionEn: null,
+    definitionZh: null,
+    definitionJa: null,
     definitionSource: "generated"
   };
+
+  // Set the source language definition
+  if (input.sourceLang === "en") {
+    result.definitionEn = input.definitionText;
+  } else if (input.sourceLang === "zh") {
+    result.definitionZh = input.definitionText;
+  } else if (input.sourceLang === "ja") {
+    result.definitionJa = input.definitionText;
+  }
+
+  // Set the translated definition
+  if (input.translatedDefinition) {
+    if (input.targetLang === "en") {
+      result.definitionEn = input.translatedDefinition;
+    } else if (input.targetLang === "zh") {
+      result.definitionZh = input.translatedDefinition;
+    } else if (input.targetLang === "ja") {
+      result.definitionJa = input.translatedDefinition;
+    }
+  }
+
+  return result;
 };
 
 export const handleDefinitionBackfillRequest = async (
@@ -96,7 +115,7 @@ export const handleDefinitionBackfillRequest = async (
   if (!selection) {
     return { ok: false, error: "provider_error", message: "Definition unavailable (invalid word)." };
   }
-  if (selection.language !== "en" && selection.language !== "zh") {
+  if (selection.language !== "en" && selection.language !== "zh" && selection.language !== "ja") {
     return { ok: false, error: "provider_error", message: "Definition unavailable." };
   }
 
@@ -154,22 +173,34 @@ export const handleDefinitionBackfillRequest = async (
 
   const sourceLang = selection.language;
   const translateDefinitions = settings.definitionTranslationEnabled;
+
+  // Determine target language based on user's translation direction settings
+  let targetLang: TranslationTargetLang;
+  if (settings.mode === "single") {
+    const directionDetails = getDirectionDetails(settings.singleDirection);
+    targetLang = directionDetails.target;
+  } else {
+    // For dual mode, use the opposite language from the source
+    const directionDetails = getDirectionDetails(settings.lastDirection);
+    targetLang = directionDetails.target;
+  }
+
   const cacheKey = makeCacheKey(provider.id, sourceLang, selection.normalizedWord);
   const cachedDefinitionText = definitionTextCache.get(cacheKey);
   if (cachedDefinitionText) {
     const translatedDefinition = translateDefinitions
-      ? await resolveDefinitionTranslation(sourceLang, selection.normalizedWord, cachedDefinitionText)
+      ? await resolveDefinitionTranslation(sourceLang, targetLang, selection.normalizedWord, cachedDefinitionText)
       : null;
-    return toBackfillResponse({ sourceLang, definitionText: cachedDefinitionText, translatedDefinition });
+    return toBackfillResponse({ sourceLang, targetLang, definitionText: cachedDefinitionText, translatedDefinition });
   }
 
   return await inSessionDeduper.dedupe(cacheKey, async () => {
     const cachedAgain = definitionTextCache.get(cacheKey);
     if (cachedAgain) {
       const translatedDefinition = translateDefinitions
-        ? await resolveDefinitionTranslation(sourceLang, selection.normalizedWord, cachedAgain)
+        ? await resolveDefinitionTranslation(sourceLang, targetLang, selection.normalizedWord, cachedAgain)
         : null;
-      return toBackfillResponse({ sourceLang, definitionText: cachedAgain, translatedDefinition });
+      return toBackfillResponse({ sourceLang, targetLang, definitionText: cachedAgain, translatedDefinition });
     }
 
     const generated = await provider.generateDefinition(
@@ -183,11 +214,12 @@ export const handleDefinitionBackfillRequest = async (
     definitionTextCache.set(cacheKey, generated.definitionText);
 
     const translatedDefinition = translateDefinitions
-      ? await resolveDefinitionTranslation(sourceLang, selection.normalizedWord, generated.definitionText)
+      ? await resolveDefinitionTranslation(sourceLang, targetLang, selection.normalizedWord, generated.definitionText)
       : null;
 
     return toBackfillResponse({
       sourceLang,
+      targetLang,
       definitionText: generated.definitionText,
       translatedDefinition
     });

@@ -637,17 +637,44 @@ const normalizeEnglishDefinition = (definition: string | null): string => {
   return value ? value : "Definition unavailable.";
 };
 
-const setDefinitionLabels = (overlay: OverlayElements, sourceLang: WordLanguage) => {
-  if (sourceLang === "zh") {
-    overlay.translationTitle.textContent = "Chinese definition";
-    overlay.translationWordLabel.textContent = "Definition (ZH)";
-    overlay.translationDefinitionLabel.textContent = "Definition (EN)";
-    return;
-  }
+const setDefinitionLabels = (
+  overlay: OverlayElements,
+  sourceLang: WordLanguage,
+  targetLang?: TranslationTargetLang
+) => {
+  // Determine the target language if not provided
+  const effectiveTargetLang = targetLang ?? (sourceLang === "zh" ? "en" : sourceLang === "ja" ? "en" : "zh");
 
-  overlay.translationTitle.textContent = "English definition";
-  overlay.translationWordLabel.textContent = "Definition (EN)";
-  overlay.translationDefinitionLabel.textContent = "Definition (ZH)";
+  // Get language display names
+  const getLanguageLabel = (lang: WordLanguage | TranslationTargetLang): string => {
+    switch (lang) {
+      case "en":
+        return "EN";
+      case "zh":
+        return "ZH";
+      case "ja":
+        return "JA";
+      default:
+        return lang.toUpperCase();
+    }
+  };
+
+  const getLanguageTitle = (lang: WordLanguage | TranslationTargetLang): string => {
+    switch (lang) {
+      case "en":
+        return "English";
+      case "zh":
+        return "Chinese";
+      case "ja":
+        return "Japanese";
+      default:
+        return lang;
+    }
+  };
+
+  overlay.translationTitle.textContent = `${getLanguageTitle(sourceLang)} definition`;
+  overlay.translationWordLabel.textContent = `Definition (${getLanguageLabel(sourceLang)})`;
+  overlay.translationDefinitionLabel.textContent = `Definition (${getLanguageLabel(effectiveTargetLang)})`;
 };
 
 export const resetTranslationUi = (englishDefinition: string | null, sourceLang: WordLanguage = "en") => {
@@ -880,6 +907,7 @@ export const showGeneratedDefinitionResult = (
     definitionSourceLang: WordLanguage;
     definitionEn: string | null;
     definitionZh: string | null;
+    definitionJa: string | null;
     definitionSource: import("../shared/messages").DefinitionSource;
   },
   options: { showDefinitionTranslation?: boolean } = {}
@@ -890,19 +918,21 @@ export const showGeneratedDefinitionResult = (
   }
 
   overlay.translation.hidden = false;
-  setDefinitionLabels(overlay, result.definitionSourceLang);
 
   const sourceDefinition =
     result.definitionSourceLang === "en"
       ? normalizeEnglishDefinition(result.definitionEn)
-      : typeof result.definitionZh === "string" && result.definitionZh.trim()
+      : result.definitionSourceLang === "zh" && typeof result.definitionZh === "string" && result.definitionZh.trim()
         ? result.definitionZh.trim()
-        : "Definition unavailable.";
+        : result.definitionSourceLang === "ja" && typeof result.definitionJa === "string" && result.definitionJa.trim()
+          ? result.definitionJa.trim()
+          : "Definition unavailable.";
 
   overlay.translationWord.textContent = sourceDefinition;
 
   const showDefinitionTranslation = options.showDefinitionTranslation !== false;
   if (!showDefinitionTranslation) {
+    setDefinitionLabels(overlay, result.definitionSourceLang);
     overlay.translationDefinitionLabel.style.display = "none";
     overlay.translationDefinition.style.display = "none";
     overlay.translationDefinition.textContent = "";
@@ -910,12 +940,40 @@ export const showGeneratedDefinitionResult = (
     return;
   }
 
-  const translatedDefinition =
-    result.definitionSourceLang === "en"
-      ? result.definitionZh
-      : typeof result.definitionEn === "string" && result.definitionEn.trim()
-        ? result.definitionEn.trim()
-        : null;
+  // Find the translated definition (the one that's not the source language) and determine target language
+  let translatedDefinition: string | null = null;
+  let targetLang: TranslationTargetLang | undefined = undefined;
+
+  if (result.definitionSourceLang === "en") {
+    // Source is English, prefer Japanese over Chinese if both exist
+    if (typeof result.definitionJa === "string" && result.definitionJa.trim()) {
+      translatedDefinition = result.definitionJa.trim();
+      targetLang = "ja";
+    } else if (typeof result.definitionZh === "string" && result.definitionZh.trim()) {
+      translatedDefinition = result.definitionZh.trim();
+      targetLang = "zh";
+    }
+  } else if (result.definitionSourceLang === "zh") {
+    // Source is Chinese, prefer Japanese over English if both exist
+    if (typeof result.definitionJa === "string" && result.definitionJa.trim()) {
+      translatedDefinition = result.definitionJa.trim();
+      targetLang = "ja";
+    } else if (typeof result.definitionEn === "string" && result.definitionEn.trim()) {
+      translatedDefinition = result.definitionEn.trim();
+      targetLang = "en";
+    }
+  } else if (result.definitionSourceLang === "ja") {
+    // Source is Japanese, prefer English over Chinese if both exist
+    if (typeof result.definitionEn === "string" && result.definitionEn.trim()) {
+      translatedDefinition = result.definitionEn.trim();
+      targetLang = "en";
+    } else if (typeof result.definitionZh === "string" && result.definitionZh.trim()) {
+      translatedDefinition = result.definitionZh.trim();
+      targetLang = "zh";
+    }
+  }
+
+  setDefinitionLabels(overlay, result.definitionSourceLang, targetLang);
 
   if (typeof translatedDefinition === "string" && translatedDefinition.trim()) {
     overlay.translationDefinitionLabel.style.display = "block";

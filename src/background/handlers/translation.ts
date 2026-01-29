@@ -20,8 +20,9 @@ import { getOpenAIConfig } from "../../shared/translation/openai";
 import { getQwenConfig } from "../../shared/translation/qwen";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
+import { getDirectionFromLanguages } from "../../shared/translation/directions";
 import { normalizeWord } from "../../shared/word/normalize";
-import { updateWordEn, updateWordZh } from "../../shared/word/store";
+import { updateWordEn, updateWordJa, updateWordZh } from "../../shared/word/store";
 
 export type TranslationRequestPayload = TranslationRequest;
 
@@ -63,7 +64,10 @@ export const handleTranslationRequest = async (
   }
 
   try {
-    await updateTranslationSettings({ lastDirection: payload.targetLang === "zh" ? "EN->ZH" : "ZH->EN" });
+    const nextDirection = getDirectionFromLanguages(payload.sourceLang, payload.targetLang);
+    if (nextDirection) {
+      await updateTranslationSettings({ lastDirection: nextDirection });
+    }
   } catch {
     // ignore storage errors
   }
@@ -118,6 +122,7 @@ export const handleTranslationRequest = async (
   const request: TranslationRequest = {
     word: payload.word,
     definition: typeof payload.definition === "string" ? payload.definition : null,
+    sourceLang: payload.sourceLang,
     targetLang: payload.targetLang
   };
 
@@ -150,6 +155,8 @@ export const handleTranslationRequest = async (
           await updateWordZh(normalizedWord, response.translatedWord);
         } else if (request.targetLang === "en") {
           await updateWordEn(normalizedWord, response.translatedWord);
+        } else if (request.targetLang === "ja") {
+          await updateWordJa(normalizedWord, response.translatedWord);
         }
       } catch {
         // ignore storage errors

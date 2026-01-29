@@ -36,6 +36,8 @@ describe("definition backfill handler", () => {
     await updateTranslationSettings({
       enabled: true,
       providerId: "gemini",
+      mode: "single",
+      singleDirection: "EN->ZH",
       definitionBackfillEnabled: true,
       definitionTranslationEnabled: true
     });
@@ -56,6 +58,8 @@ describe("definition backfill handler", () => {
     await updateTranslationSettings({
       enabled: true,
       providerId: "gemini",
+      mode: "single",
+      singleDirection: "ZH->EN",
       definitionBackfillEnabled: true,
       definitionTranslationEnabled: true
     });
