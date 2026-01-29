@@ -108,25 +108,35 @@ const getEntryLanguage = (entry: WordEntry): WordLanguage | null => {
   return detectWordLanguage(entry.normalizedWord) ?? detectWordLanguage(entry.displayWord);
 };
 
-const getLabelForEntry = (entry: WordEntry, language: WordLanguage | null): string => {
-  if (language === "en") {
+const getLabelForEntry = (entry: WordEntry, sourceLanguage: WordLanguage | null): string => {
+  if (!sourceLanguage) {
+    return (
+      typeof entry.wordZh === "string" && entry.wordZh.trim()
+        ? entry.wordZh.trim()
+        : typeof entry.wordEn === "string" && entry.wordEn.trim()
+          ? entry.wordEn.trim()
+          : typeof entry.wordJa === "string" && entry.wordJa.trim()
+            ? entry.wordJa.trim()
+            : ""
+    );
+  }
+
+  // Get the current translation direction to determine target language
+  const activeDirection = getActiveDirection();
+  const { target: targetLanguage } = getDirectionDetails(activeDirection);
+
+  // Return the translation in the target language
+  if (targetLanguage === "zh") {
     return typeof entry.wordZh === "string" && entry.wordZh.trim() ? entry.wordZh.trim() : "";
   }
-  if (language === "zh") {
+  if (targetLanguage === "en") {
     return typeof entry.wordEn === "string" && entry.wordEn.trim() ? entry.wordEn.trim() : "";
   }
-  if (language === "ja") {
+  if (targetLanguage === "ja") {
     return typeof entry.wordJa === "string" && entry.wordJa.trim() ? entry.wordJa.trim() : "";
   }
-  return (
-    typeof entry.wordZh === "string" && entry.wordZh.trim()
-      ? entry.wordZh.trim()
-      : typeof entry.wordEn === "string" && entry.wordEn.trim()
-        ? entry.wordEn.trim()
-        : typeof entry.wordJa === "string" && entry.wordJa.trim()
-          ? entry.wordJa.trim()
-          : ""
-  );
+
+  return "";
 };
 
 const getActiveDirection = (): TranslationDirection => {
