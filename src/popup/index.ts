@@ -1,7 +1,6 @@
 import { MessageTypes } from "../shared/messages";
 import type { Preferences, WordEntry } from "../shared/storage/schema";
 import {
-  formatDirectionLabel,
   getDirectionDetails,
   getDualPairDirections,
   getLanguageCode,

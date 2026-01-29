@@ -72,6 +72,7 @@
         --definition-translate-col-width: 220px;
         --translation-row-gap: 16px;
         --translation-row-width: 692px;
+        --note-fixed-height: 20px;
       }
       .grid-row {
         display: grid;
@@ -148,6 +149,29 @@
         margin-top: 10px;
         font-size: 12px;
         color: #6b7280;
+        min-height: var(--note-fixed-height);
+        display: flex;
+        align-items: center;
+        line-height: var(--note-fixed-height);
+      }
+      .note-pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 8px;
+        padding: 0 8px;
+        min-height: var(--note-fixed-height);
+        line-height: var(--note-fixed-height);
+        box-sizing: border-box;
+      }
+      .note-pill.note-success {
+        color: #065f46;
+        background: #ecfdf3;
+        box-shadow: inset 0 0 0 1px #a7f3d0;
+      }
+      .note-pill.note-error {
+        color: #b91c1c;
+        background: #fef2f2;
+        box-shadow: inset 0 0 0 1px #fecaca;
       }
       .segmented {
         display: inline-flex;
@@ -333,7 +357,7 @@
             <button type="button" id="gemini-clear">Clear Gemini config</button>
           </div>
 
-          <div class="note">
+          <div class="note" id="gemini-note">
             Gemini configuration is optional. It applies only when both fields are set; otherwise WordMark uses the built-in endpoints and automatic model selection. Endpoint URLs must be HTTPS.
           </div>
         </div>
@@ -359,7 +383,7 @@
             <button type="button" id="deepseek-clear">Clear DeepSeek config</button>
           </div>
 
-          <div class="note">DeepSeek configuration is required only when DeepSeek is selected. Endpoint URLs must be HTTPS.</div>
+          <div class="note" id="deepseek-note">DeepSeek configuration is required only when DeepSeek is selected. Endpoint URLs must be HTTPS.</div>
         </div>
 
         <div id="moonshot-config" class="provider-config" hidden>
@@ -383,7 +407,7 @@
             <button type="button" id="moonshot-clear">Clear Moonshot config</button>
           </div>
 
-          <div class="note">
+          <div class="note" id="moonshot-note">
             Moonshot configuration is required only when Moonshot is selected. Endpoint URLs must be HTTPS.
           </div>
         </div>
@@ -409,7 +433,7 @@
             <button type="button" id="openai-clear">Clear OpenAI config</button>
           </div>
 
-          <div class="note">OpenAI configuration is required only when OpenAI is selected.</div>
+          <div class="note" id="openai-note">OpenAI configuration is required only when OpenAI is selected.</div>
         </div>
 
         <div id="qwen-config" class="provider-config" hidden>
@@ -433,7 +457,7 @@
             <button type="button" id="qwen-clear">Clear Qwen config</button>
           </div>
 
-          <div class="note">Qwen configuration is required only when Qwen is selected.</div>
+          <div class="note" id="qwen-note">Qwen configuration is required only when Qwen is selected.</div>
         </div>
 
         <div id="volcengine-config" class="provider-config" hidden>
@@ -457,7 +481,7 @@
             <button type="button" id="volcengine-clear">Clear Volcengine config</button>
           </div>
 
-          <div class="note">Volcengine configuration is required only when Volcengine is selected.</div>
+          <div class="note" id="volcengine-note">Volcengine configuration is required only when Volcengine is selected.</div>
         </div>
 
         <div id="zhipu-config" class="provider-config" hidden>
@@ -481,7 +505,7 @@
             <button type="button" id="zhipu-clear">Clear Zhipu config</button>
           </div>
 
-          <div class="note">Zhipu configuration is required only when Zhipu is selected.</div>
+          <div class="note" id="zhipu-note">Zhipu configuration is required only when Zhipu is selected.</div>
         </div>
 
         <div class="field grid-width">
@@ -500,7 +524,7 @@
         </div>
 
         <div id="translation-status" class="status" role="status" aria-live="polite"></div>
-        <div class="note">API key is stored locally and never displayed back in full.</div>
+        <div class="note" id="translation-api-note">API key is stored locally and never displayed back in full.</div>
       </section>
     </main>
     <script src="options.js"></script>

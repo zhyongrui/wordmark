@@ -41,36 +41,44 @@ const geminiEndpointInput = byId<HTMLInputElement>("gemini-endpoint");
 const geminiModelInput = byId<HTMLInputElement>("gemini-model");
 const geminiSaveButton = byId<HTMLButtonElement>("gemini-save");
 const geminiClearButton = byId<HTMLButtonElement>("gemini-clear");
+const geminiNote = byId<HTMLDivElement>("gemini-note");
 const deepseekSection = byId<HTMLDivElement>("deepseek-config");
 const deepseekEndpointInput = byId<HTMLInputElement>("deepseek-endpoint");
 const deepseekModelInput = byId<HTMLInputElement>("deepseek-model");
 const deepseekSaveButton = byId<HTMLButtonElement>("deepseek-save");
 const deepseekClearButton = byId<HTMLButtonElement>("deepseek-clear");
+const deepseekNote = byId<HTMLDivElement>("deepseek-note");
 const moonshotSection = byId<HTMLDivElement>("moonshot-config");
 const moonshotEndpointInput = byId<HTMLInputElement>("moonshot-endpoint");
 const moonshotModelInput = byId<HTMLInputElement>("moonshot-model");
 const moonshotSaveButton = byId<HTMLButtonElement>("moonshot-save");
 const moonshotClearButton = byId<HTMLButtonElement>("moonshot-clear");
+const moonshotNote = byId<HTMLDivElement>("moonshot-note");
 const openaiSection = byId<HTMLDivElement>("openai-config");
 const openaiEndpointInput = byId<HTMLInputElement>("openai-endpoint");
 const openaiModelInput = byId<HTMLInputElement>("openai-model");
 const openaiSaveButton = byId<HTMLButtonElement>("openai-save");
 const openaiClearButton = byId<HTMLButtonElement>("openai-clear");
+const openaiNote = byId<HTMLDivElement>("openai-note");
 const qwenSection = byId<HTMLDivElement>("qwen-config");
 const qwenEndpointInput = byId<HTMLInputElement>("qwen-endpoint");
 const qwenModelInput = byId<HTMLInputElement>("qwen-model");
 const qwenSaveButton = byId<HTMLButtonElement>("qwen-save");
 const qwenClearButton = byId<HTMLButtonElement>("qwen-clear");
+const qwenNote = byId<HTMLDivElement>("qwen-note");
 const volcengineSection = byId<HTMLDivElement>("volcengine-config");
 const volcengineEndpointInput = byId<HTMLInputElement>("volcengine-endpoint");
 const volcengineModelInput = byId<HTMLInputElement>("volcengine-model");
 const volcengineSaveButton = byId<HTMLButtonElement>("volcengine-save");
 const volcengineClearButton = byId<HTMLButtonElement>("volcengine-clear");
+const volcengineNote = byId<HTMLDivElement>("volcengine-note");
 const zhipuSection = byId<HTMLDivElement>("zhipu-config");
 const zhipuEndpointInput = byId<HTMLInputElement>("zhipu-endpoint");
 const zhipuModelInput = byId<HTMLInputElement>("zhipu-model");
 const zhipuSaveButton = byId<HTMLButtonElement>("zhipu-save");
 const zhipuClearButton = byId<HTMLButtonElement>("zhipu-clear");
+const zhipuNote = byId<HTMLDivElement>("zhipu-note");
+const translationApiNote = byId<HTMLDivElement>("translation-api-note");
 
 const setStatus = (message: string) => {
   if (!statusEl) {
@@ -78,6 +86,59 @@ const setStatus = (message: string) => {
   }
   statusEl.innerHTML = message;
 };
+
+const providerLabels: Record<string, string> = {
+  gemini: "Gemini",
+  deepseek: "DeepSeek",
+  moonshot: "Moonshot",
+  openai: "OpenAI",
+  qwen: "Qwen",
+  volcengine: "Volcengine",
+  zhipu: "Zhipu"
+};
+
+const getProviderLabel = (providerId: string | null | undefined): string => {
+  if (!providerId) {
+    return "Gemini";
+  }
+  return providerLabels[providerId] ?? "Gemini";
+};
+
+const noteTimers = new WeakMap<HTMLElement, number>();
+
+const ensureNoteBaseline = (noteEl: HTMLElement) => {
+  if (!noteEl.dataset.originalNote) {
+    noteEl.dataset.originalNote = noteEl.textContent ?? "";
+  }
+};
+
+
+const restoreNote = (noteEl: HTMLElement) => {
+  const original = noteEl.dataset.originalNote ?? "";
+  noteEl.textContent = original;
+};
+
+const showNoteFeedback = (noteEl: HTMLElement | null, message: string, tone: "success" | "error") => {
+  if (!noteEl) {
+    return;
+  }
+  ensureNoteBaseline(noteEl);
+  noteEl.textContent = "";
+  const pill = document.createElement("span");
+  pill.className = `note-pill note-${tone}`;
+  pill.textContent = message;
+  noteEl.appendChild(pill);
+  const previousTimer = noteTimers.get(noteEl);
+  if (previousTimer) {
+    window.clearTimeout(previousTimer);
+  }
+  const timeoutMs = tone === "success" ? 3000 : 6000;
+  const timer = window.setTimeout(() => {
+    restoreNote(noteEl);
+  }, timeoutMs);
+  noteTimers.set(noteEl, timer);
+};
+
 
 let currentMode: "single" | "dual" = "single";
 
@@ -89,9 +150,17 @@ const setDirectionOptions = (mode: "single" | "dual", settings: { singleDirectio
     mode === "single"
       ? [
           { value: "EN->ZH", label: "EN→ZH" },
-          { value: "ZH->EN", label: "ZH→EN" }
+          { value: "ZH->EN", label: "ZH→EN" },
+          { value: "EN->JA", label: "EN→JA" },
+          { value: "JA->EN", label: "JA→EN" },
+          { value: "ZH->JA", label: "ZH→JA" },
+          { value: "JA->ZH", label: "JA→ZH" }
         ]
-      : [{ value: "EN<->ZH", label: "EN↔ZH" }];
+      : [
+          { value: "EN<->ZH", label: "EN↔ZH" },
+          { value: "EN<->JA", label: "EN↔JA" },
+          { value: "ZH<->JA", label: "ZH↔JA" }
+        ];
 
   directionSelect.textContent = "";
   options.forEach((option) => {
@@ -222,20 +291,7 @@ const refresh = async () => {
   }
 
   const availability = await getTranslationAvailability();
-  const providerLabel =
-    settings.providerId === "deepseek"
-      ? "DeepSeek"
-      : settings.providerId === "moonshot"
-        ? "Moonshot"
-        : settings.providerId === "openai"
-          ? "OpenAI"
-          : settings.providerId === "qwen"
-            ? "Qwen"
-            : settings.providerId === "volcengine"
-              ? "Volcengine"
-              : settings.providerId === "zhipu"
-                ? "Zhipu"
-                : "Gemini";
+  const providerLabel = getProviderLabel(settings.providerId);
   let overrideStatus = "";
   if (settings.providerId === "gemini") {
     const geminiConfig = await getGeminiConfig();
@@ -272,30 +328,38 @@ const initialize = () => {
     !geminiModelInput ||
     !geminiSaveButton ||
     !geminiClearButton ||
+    !geminiNote ||
     !deepseekEndpointInput ||
     !deepseekModelInput ||
     !deepseekSaveButton ||
     !deepseekClearButton ||
+    !deepseekNote ||
     !moonshotEndpointInput ||
     !moonshotModelInput ||
     !moonshotSaveButton ||
     !moonshotClearButton ||
+    !moonshotNote ||
     !openaiEndpointInput ||
     !openaiModelInput ||
     !openaiSaveButton ||
     !openaiClearButton ||
+    !openaiNote ||
     !qwenEndpointInput ||
     !qwenModelInput ||
     !qwenSaveButton ||
     !qwenClearButton ||
+    !qwenNote ||
     !volcengineEndpointInput ||
     !volcengineModelInput ||
     !volcengineSaveButton ||
     !volcengineClearButton ||
+    !volcengineNote ||
     !zhipuEndpointInput ||
     !zhipuModelInput ||
     !zhipuSaveButton ||
-    !zhipuClearButton
+    !zhipuClearButton ||
+    !zhipuNote ||
+    !translationApiNote
   ) {
     return;
   }
@@ -374,184 +438,268 @@ const initialize = () => {
 
   saveButton.addEventListener("click", () => {
     void (async () => {
-      const apiKey = apiKeyInput.value.trim();
-      if (!apiKey) {
-        setStatus("Enter an API key first.");
-        return;
-      }
+      try {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+          showNoteFeedback(translationApiNote, "! Enter an API key first.", "error");
+          return;
+        }
 
-      await setTranslationApiKey(providerSelect.value, apiKey);
-      apiKeyInput.value = "";
-      await refresh();
+        const providerLabel = getProviderLabel(providerSelect.value);
+        await setTranslationApiKey(providerSelect.value, apiKey);
+        apiKeyInput.value = "";
+        showNoteFeedback(translationApiNote, `✓ API key saved for ${providerLabel}.`, "success");
+        await refresh();
+      } catch {
+        const providerLabel = getProviderLabel(providerSelect.value);
+        showNoteFeedback(translationApiNote, `! Failed to save API key for ${providerLabel}.`, "error");
+      }
     })();
   });
 
   clearButton.addEventListener("click", () => {
     void (async () => {
-      await clearTranslationApiKey(providerSelect.value);
-      apiKeyInput.value = "";
-      await refresh();
+      try {
+        const providerLabel = getProviderLabel(providerSelect.value);
+        await clearTranslationApiKey(providerSelect.value);
+        apiKeyInput.value = "";
+        showNoteFeedback(translationApiNote, `✓ API key cleared for ${providerLabel}.`, "success");
+        await refresh();
+      } catch {
+        const providerLabel = getProviderLabel(providerSelect.value);
+        showNoteFeedback(translationApiNote, `! Failed to clear API key for ${providerLabel}.`, "error");
+      }
     })();
   });
 
   geminiSaveButton.addEventListener("click", () => {
     void (async () => {
-      const endpointUrl = geminiEndpointInput.value.trim();
-      const modelId = geminiModelInput.value.trim();
-      if (!endpointUrl || !modelId) {
-        setStatus("Enter a Gemini base endpoint URL and model ID first.");
-        return;
-      }
+      try {
+        const endpointUrl = geminiEndpointInput.value.trim();
+        const modelId = geminiModelInput.value.trim();
+        if (!endpointUrl || !modelId) {
+          showNoteFeedback(geminiNote, "! Enter a Gemini base endpoint URL and model ID first.", "error");
+          return;
+        }
 
-      await writeGeminiConfig({ endpointUrl, modelId });
-      await refresh();
+        await writeGeminiConfig({ endpointUrl, modelId });
+        showNoteFeedback(geminiNote, "✓ Gemini config saved.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(geminiNote, "! Failed to save Gemini config.", "error");
+      }
     })();
   });
 
   geminiClearButton.addEventListener("click", () => {
     void (async () => {
-      await clearGeminiConfig();
-      geminiEndpointInput.value = "";
-      geminiModelInput.value = "";
-      await refresh();
+      try {
+        await clearGeminiConfig();
+        geminiEndpointInput.value = "";
+        geminiModelInput.value = "";
+        showNoteFeedback(geminiNote, "✓ Gemini config cleared.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(geminiNote, "! Failed to clear Gemini config.", "error");
+      }
     })();
   });
 
   deepseekSaveButton.addEventListener("click", () => {
     void (async () => {
-      const endpointUrl = deepseekEndpointInput.value.trim();
-      const modelId = deepseekModelInput.value.trim();
-      if (!endpointUrl || !modelId) {
-        setStatus("Enter a DeepSeek endpoint URL and model ID first.");
-        return;
-      }
+      try {
+        const endpointUrl = deepseekEndpointInput.value.trim();
+        const modelId = deepseekModelInput.value.trim();
+        if (!endpointUrl || !modelId) {
+          showNoteFeedback(deepseekNote, "! Enter a DeepSeek endpoint URL and model ID first.", "error");
+          return;
+        }
 
-      await writeDeepSeekConfig({ endpointUrl, modelId });
-      await refresh();
+        await writeDeepSeekConfig({ endpointUrl, modelId });
+        showNoteFeedback(deepseekNote, "✓ DeepSeek config saved.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(deepseekNote, "! Failed to save DeepSeek config.", "error");
+      }
     })();
   });
 
   deepseekClearButton.addEventListener("click", () => {
     void (async () => {
-      await clearDeepSeekConfig();
-      deepseekEndpointInput.value = "";
-      deepseekModelInput.value = "";
-      await refresh();
+      try {
+        await clearDeepSeekConfig();
+        deepseekEndpointInput.value = "";
+        deepseekModelInput.value = "";
+        showNoteFeedback(deepseekNote, "✓ DeepSeek config cleared.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(deepseekNote, "! Failed to clear DeepSeek config.", "error");
+      }
     })();
   });
 
   moonshotSaveButton.addEventListener("click", () => {
     void (async () => {
-      const endpointUrl = moonshotEndpointInput.value.trim();
-      const modelId = moonshotModelInput.value.trim();
-      if (!endpointUrl || !modelId) {
-        setStatus("Enter a Moonshot endpoint URL and model ID first.");
-        return;
-      }
+      try {
+        const endpointUrl = moonshotEndpointInput.value.trim();
+        const modelId = moonshotModelInput.value.trim();
+        if (!endpointUrl || !modelId) {
+          showNoteFeedback(moonshotNote, "! Enter a Moonshot endpoint URL and model ID first.", "error");
+          return;
+        }
 
-      await writeMoonshotConfig({ endpointUrl, modelId });
-      await refresh();
+        await writeMoonshotConfig({ endpointUrl, modelId });
+        showNoteFeedback(moonshotNote, "✓ Moonshot config saved.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(moonshotNote, "! Failed to save Moonshot config.", "error");
+      }
     })();
   });
 
   moonshotClearButton.addEventListener("click", () => {
     void (async () => {
-      await clearMoonshotConfig();
-      moonshotEndpointInput.value = "";
-      moonshotModelInput.value = "";
-      await refresh();
+      try {
+        await clearMoonshotConfig();
+        moonshotEndpointInput.value = "";
+        moonshotModelInput.value = "";
+        showNoteFeedback(moonshotNote, "✓ Moonshot config cleared.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(moonshotNote, "! Failed to clear Moonshot config.", "error");
+      }
     })();
   });
 
   openaiSaveButton.addEventListener("click", () => {
     void (async () => {
-      const endpointUrl = openaiEndpointInput.value.trim();
-      const modelId = openaiModelInput.value.trim();
-      if (!endpointUrl || !modelId) {
-        setStatus("Enter an OpenAI endpoint URL and model ID first.");
-        return;
-      }
+      try {
+        const endpointUrl = openaiEndpointInput.value.trim();
+        const modelId = openaiModelInput.value.trim();
+        if (!endpointUrl || !modelId) {
+          showNoteFeedback(openaiNote, "! Enter an OpenAI endpoint URL and model ID first.", "error");
+          return;
+        }
 
-      await writeOpenAIConfig({ endpointUrl, modelId });
-      await refresh();
+        await writeOpenAIConfig({ endpointUrl, modelId });
+        showNoteFeedback(openaiNote, "✓ OpenAI config saved.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(openaiNote, "! Failed to save OpenAI config.", "error");
+      }
     })();
   });
 
   openaiClearButton.addEventListener("click", () => {
     void (async () => {
-      await clearOpenAIConfig();
-      openaiEndpointInput.value = "";
-      openaiModelInput.value = "";
-      await refresh();
+      try {
+        await clearOpenAIConfig();
+        openaiEndpointInput.value = "";
+        openaiModelInput.value = "";
+        showNoteFeedback(openaiNote, "✓ OpenAI config cleared.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(openaiNote, "! Failed to clear OpenAI config.", "error");
+      }
     })();
   });
 
   qwenSaveButton.addEventListener("click", () => {
     void (async () => {
-      const endpointUrl = qwenEndpointInput.value.trim();
-      const modelId = qwenModelInput.value.trim();
-      if (!endpointUrl || !modelId) {
-        setStatus("Enter a Qwen endpoint URL and model ID first.");
-        return;
-      }
+      try {
+        const endpointUrl = qwenEndpointInput.value.trim();
+        const modelId = qwenModelInput.value.trim();
+        if (!endpointUrl || !modelId) {
+          showNoteFeedback(qwenNote, "! Enter a Qwen endpoint URL and model ID first.", "error");
+          return;
+        }
 
-      await writeQwenConfig({ endpointUrl, modelId });
-      await refresh();
+        await writeQwenConfig({ endpointUrl, modelId });
+        showNoteFeedback(qwenNote, "✓ Qwen config saved.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(qwenNote, "! Failed to save Qwen config.", "error");
+      }
     })();
   });
 
   qwenClearButton.addEventListener("click", () => {
     void (async () => {
-      await clearQwenConfig();
-      qwenEndpointInput.value = "";
-      qwenModelInput.value = "";
-      await refresh();
+      try {
+        await clearQwenConfig();
+        qwenEndpointInput.value = "";
+        qwenModelInput.value = "";
+        showNoteFeedback(qwenNote, "✓ Qwen config cleared.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(qwenNote, "! Failed to clear Qwen config.", "error");
+      }
     })();
   });
 
   volcengineSaveButton.addEventListener("click", () => {
     void (async () => {
-      const endpointUrl = volcengineEndpointInput.value.trim();
-      const modelId = volcengineModelInput.value.trim();
-      if (!endpointUrl || !modelId) {
-        setStatus("Enter a Volcengine endpoint URL and model/endpoint ID first.");
-        return;
-      }
+      try {
+        const endpointUrl = volcengineEndpointInput.value.trim();
+        const modelId = volcengineModelInput.value.trim();
+        if (!endpointUrl || !modelId) {
+          showNoteFeedback(volcengineNote, "! Enter a Volcengine endpoint URL and model/endpoint ID first.", "error");
+          return;
+        }
 
-      await writeVolcengineConfig({ endpointUrl, modelId });
-      await refresh();
+        await writeVolcengineConfig({ endpointUrl, modelId });
+        showNoteFeedback(volcengineNote, "✓ Volcengine config saved.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(volcengineNote, "! Failed to save Volcengine config.", "error");
+      }
     })();
   });
 
   volcengineClearButton.addEventListener("click", () => {
     void (async () => {
-      await clearVolcengineConfig();
-      volcengineEndpointInput.value = "";
-      volcengineModelInput.value = "";
-      await refresh();
+      try {
+        await clearVolcengineConfig();
+        volcengineEndpointInput.value = "";
+        volcengineModelInput.value = "";
+        showNoteFeedback(volcengineNote, "✓ Volcengine config cleared.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(volcengineNote, "! Failed to clear Volcengine config.", "error");
+      }
     })();
   });
 
   zhipuSaveButton.addEventListener("click", () => {
     void (async () => {
-      const endpointUrl = zhipuEndpointInput.value.trim();
-      const modelId = zhipuModelInput.value.trim();
-      if (!endpointUrl || !modelId) {
-        setStatus("Enter a Zhipu endpoint URL and model ID first.");
-        return;
-      }
+      try {
+        const endpointUrl = zhipuEndpointInput.value.trim();
+        const modelId = zhipuModelInput.value.trim();
+        if (!endpointUrl || !modelId) {
+          showNoteFeedback(zhipuNote, "! Enter a Zhipu endpoint URL and model ID first.", "error");
+          return;
+        }
 
-      await writeZhipuConfig({ endpointUrl, modelId });
-      await refresh();
+        await writeZhipuConfig({ endpointUrl, modelId });
+        showNoteFeedback(zhipuNote, "✓ Zhipu config saved.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(zhipuNote, "! Failed to save Zhipu config.", "error");
+      }
     })();
   });
 
   zhipuClearButton.addEventListener("click", () => {
     void (async () => {
-      await clearZhipuConfig();
-      zhipuEndpointInput.value = "";
-      zhipuModelInput.value = "";
-      await refresh();
+      try {
+        await clearZhipuConfig();
+        zhipuEndpointInput.value = "";
+        zhipuModelInput.value = "";
+        showNoteFeedback(zhipuNote, "✓ Zhipu config cleared.", "success");
+        await refresh();
+      } catch {
+        showNoteFeedback(zhipuNote, "! Failed to clear Zhipu config.", "error");
+      }
     })();
   });
 
