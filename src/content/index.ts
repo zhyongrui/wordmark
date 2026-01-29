@@ -22,8 +22,17 @@ import {
 import { canPronounce, playPronunciation } from "./pronounce";
 import { createHighlightEngine } from "./highlight";
 import type { Preferences, WordEntry } from "../shared/storage/schema";
+import {
+  formatDirectionLabel,
+  formatDualPairLabel,
+  getDirectionDetails,
+  getDirectionFromLanguages,
+  getDualPairLanguages,
+  getLanguageDisplayName,
+  getOppositeDirection
+} from "../shared/translation/directions";
 import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/translation/settings";
-import type { TranslationResponse } from "../shared/translation/types";
+import type { TranslationResponse, TranslationTargetLang } from "../shared/translation/types";
 import { detectWordLanguage, type WordLanguage } from "../shared/word/normalize";
 
 type LookupResponse =
@@ -116,22 +125,50 @@ const triggerLookup = async () => {
   translationEnabled = Boolean(settings.enabled);
   definitionBackfillEnabled = Boolean(settings.definitionBackfillEnabled);
   definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
-  if (selectionLanguage === "zh" && !translationEnabled) {
+  if ((selectionLanguage === "zh" || selectionLanguage === "ja") && !translationEnabled) {
     ensureOverlayAutoClose();
-    showNotice("Enable translation to look up Chinese words.");
+    showNotice("Enable translation to look up Chinese or Japanese words.");
     return;
   }
-  if (translationEnabled && settings.mode === "single") {
-    const expectsEnglish = settings.singleDirection === "EN->ZH";
-    if (expectsEnglish && selectionLanguage === "zh") {
-      ensureOverlayAutoClose();
-      showNotice("当前为 EN→ZH 模式，请到设置切换为 ZH→EN 或开启双向翻译模式");
-      return;
-    }
-    if (!expectsEnglish && selectionLanguage === "en") {
-      ensureOverlayAutoClose();
-      showNotice("当前为 ZH→EN 模式，请到设置切换为 EN→ZH 或开启双向翻译模式");
-      return;
+
+  let directionInfo:
+    | {
+        targetLang: TranslationTargetLang;
+      }
+    | null = null;
+  if (translationEnabled) {
+    if (settings.mode === "single") {
+      const directionLabel = settings.singleDirection;
+      const details = getDirectionDetails(directionLabel);
+      if (details.source !== selectionLanguage) {
+        ensureOverlayAutoClose();
+        showNotice(
+          `当前为 ${formatDirectionLabel(directionLabel)} 模式，请到设置切换为 ${formatDirectionLabel(
+            getOppositeDirection(directionLabel)
+          )} 或开启双向翻译模式`
+        );
+        return;
+      }
+      directionInfo = { targetLang: details.target };
+    } else {
+      const pairLanguages = getDualPairLanguages(settings.dualPair);
+      if (!pairLanguages.includes(selectionLanguage)) {
+        ensureOverlayAutoClose();
+        showNotice(
+          `当前为 ${formatDualPairLabel(settings.dualPair)} 模式，暂不支持 ${getLanguageDisplayName(
+            selectionLanguage
+          )} 语言的查词。请切换到包含该语言的语言对。`
+        );
+        return;
+      }
+      const targetLang = pairLanguages[0] === selectionLanguage ? pairLanguages[1] : pairLanguages[0];
+      const directionLabel = getDirectionFromLanguages(selectionLanguage, targetLang);
+      if (!directionLabel) {
+        ensureOverlayAutoClose();
+        showNotice("Unsupported translation direction.");
+        return;
+      }
+      directionInfo = { targetLang };
     }
   }
 
@@ -174,8 +211,14 @@ const triggerLookup = async () => {
     definition: entry.definition,
     language: selectionLanguage
   };
-  if (translationEnabled) {
-    void requestTranslation(sessionId, entry.displayWord, entry.definition, selectionLanguage);
+  if (translationEnabled && directionInfo) {
+    void requestTranslation(
+      sessionId,
+      entry.displayWord,
+      entry.definition,
+      selectionLanguage,
+      directionInfo.targetLang
+    );
     if (
       definitionBackfillEnabled &&
       entry.definition == null &&
@@ -190,7 +233,8 @@ const requestTranslation = async (
   sessionId: number,
   word: string,
   definition: string | null,
-  language: WordLanguage
+  language: WordLanguage,
+  targetLang: TranslationTargetLang
 ) => {
   if (sessionId !== lookupSessionId) {
     return;
@@ -200,7 +244,10 @@ const requestTranslation = async (
   }
 
   bumpAutoCloseIgnore(250);
-  const definitionAvailable = typeof definition === "string" && definition.trim().length > 0;
+  const definitionAvailable =
+    typeof definition === "string" &&
+    definition.trim().length > 0 &&
+    definitionTranslationEnabled;
   const preserveDefinitionArea = !definitionAvailable && definitionBackfillEnabled;
   showTranslationLoading(language, { definitionAvailable });
 
@@ -208,8 +255,9 @@ const requestTranslation = async (
     type: MessageTypes.TranslationRequest,
     payload: {
       word,
-      definition: language === "en" ? definition : null,
-      targetLang: language === "en" ? "zh" : "en"
+      definition: language === "en" && definitionTranslationEnabled ? definition : null,
+      sourceLang: language,
+      targetLang
     }
   });
 
