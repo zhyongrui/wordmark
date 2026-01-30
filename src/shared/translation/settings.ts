@@ -1,8 +1,14 @@
 export const TRANSLATION_SETTINGS_KEY = "wordmark:translation:settings";
 
 export type TranslationMode = "single" | "dual";
-export type TranslationDirection = "EN->ZH" | "ZH->EN";
-export type TranslationDualPair = "EN<->ZH";
+export type TranslationDirection =
+  | "EN->ZH"
+  | "ZH->EN"
+  | "EN->JA"
+  | "JA->EN"
+  | "ZH->JA"
+  | "JA->ZH";
+export type TranslationDualPair = "EN<->ZH" | "EN<->JA" | "ZH<->JA";
 
 export type TranslationSettings = {
   enabled: boolean;
@@ -84,9 +90,16 @@ const writeToChrome = async (storage: StorageArea, payload: TranslationSettingsR
 
 const isMode = (value: unknown): value is TranslationMode => value === "single" || value === "dual";
 
-const isDirection = (value: unknown): value is TranslationDirection => value === "EN->ZH" || value === "ZH->EN";
+const isDirection = (value: unknown): value is TranslationDirection =>
+  value === "EN->ZH" ||
+  value === "ZH->EN" ||
+  value === "EN->JA" ||
+  value === "JA->EN" ||
+  value === "ZH->JA" ||
+  value === "JA->ZH";
 
-const isDualPair = (value: unknown): value is TranslationDualPair => value === "EN<->ZH";
+const isDualPair = (value: unknown): value is TranslationDualPair =>
+  value === "EN<->ZH" || value === "EN<->JA" || value === "ZH<->JA";
 
 const parseSettings = (input: unknown): TranslationSettings => {
   if (!input || typeof input !== "object") {

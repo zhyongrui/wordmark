@@ -44,6 +44,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 
@@ -61,6 +62,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 
@@ -78,6 +80,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "你好",
       definition: null,
+      sourceLang: "zh",
       targetLang: "en"
     });
 
@@ -94,6 +97,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 
@@ -112,6 +116,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 
@@ -130,6 +135,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 
@@ -148,6 +154,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 
@@ -166,6 +173,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 
@@ -184,6 +192,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 
@@ -202,6 +211,7 @@ describe("background translation handler gating", () => {
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",
+      sourceLang: "en",
       targetLang: "zh"
     });
 

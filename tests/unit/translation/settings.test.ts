@@ -83,4 +83,26 @@ describe("translation settings", () => {
       [TRANSLATION_SETTINGS_KEY]: expect.any(Object)
     });
   });
+
+  it("supports Japanese directions in the saved settings", async () => {
+    const next = await updateTranslationSettings({
+      enabled: true,
+      providerId: "gemini",
+      mode: "single",
+      singleDirection: "EN->JA",
+      dualPair: "EN<->JA",
+      lastDirection: "EN->JA",
+      definitionBackfillEnabled: true,
+      definitionTranslationEnabled: true
+    });
+
+    expect(next.singleDirection).toBe("EN->JA");
+    expect(next.dualPair).toBe("EN<->JA");
+    expect(next.lastDirection).toBe("EN->JA");
+
+    const stored = await readTranslationSettings();
+    expect(stored.singleDirection).toBe("EN->JA");
+    expect(stored.dualPair).toBe("EN<->JA");
+    expect(stored.lastDirection).toBe("EN->JA");
+  });
 });

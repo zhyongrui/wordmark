@@ -8,8 +8,7 @@ const staticFiles = [
   { src: "src/popup/popup.html", dest: "popup.html" },
   { src: "src/popup/styles.css", dest: "styles.css" },
   { src: "src/options/options.html", dest: "options.html" },
-  { src: "src/content/lookup-overlay.css", dest: "lookup-overlay.css" },
-  { src: "src/assets/dictionary-basic.json", dest: "assets/dictionary-basic.json" }
+  { src: "src/content/lookup-overlay.css", dest: "lookup-overlay.css" }
 ];
 
 rmSync(outdir, { recursive: true, force: true });

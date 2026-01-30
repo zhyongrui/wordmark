@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageTypes } from "../../../src/shared/messages";
+import type { TranslationDirection } from "../../../src/shared/translation/settings";
 
 let translationEnabled = false;
 let translationMode: "single" | "dual" = "single";
-let singleDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
-let lastDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let singleDirection: TranslationDirection = "EN->ZH";
+let lastDirection: TranslationDirection = "EN->ZH";
+let dualPair: "EN<->ZH" | "EN<->JA" | "ZH<->JA" = "EN<->ZH";
 let definitionBackfillEnabled = false;
 let definitionTranslationEnabled = false;
 
@@ -20,7 +22,7 @@ vi.mock("../../../src/shared/translation/settings", () => {
       providerId: "gemini",
       mode: translationMode,
       singleDirection,
-      dualPair: "EN<->ZH",
+      dualPair,
       lastDirection,
       definitionBackfillEnabled,
       definitionTranslationEnabled
@@ -140,6 +142,7 @@ beforeEach(() => {
   translationMode = "single";
   singleDirection = "EN->ZH";
   lastDirection = "EN->ZH";
+  dualPair = "EN<->ZH";
   definitionBackfillEnabled = false;
   definitionTranslationEnabled = false;
   installMinimalDom();
@@ -267,5 +270,56 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const types = chromeRuntime.sendMessage.mock.calls.map(([message]) => (message as { type?: string }).type);
     expect(types).not.toContain(MessageTypes.LookupRequest);
     expect(showNotice).toHaveBeenCalledWith("当前为 ZH→EN 模式，请到设置切换为 EN→ZH 或开启双向翻译模式");
+  });
+
+  it("shows notice when Japanese lookup occurs while translation is disabled", async () => {
+    translationEnabled = false;
+    installMinimalDom("こんにちは");
+
+    const chromeRuntime = installFakeChromeRuntime({
+      onLookup: () => ({
+        ok: true,
+        entry: { displayWord: "こんにちは", definition: null, pronunciationAvailable: true }
+      }),
+      onTranslate: () => ({ ok: false, error: "not_configured" })
+    });
+
+    await import("../../../src/content/index");
+
+    chromeRuntime.dispatchLookupTrigger();
+    await flushPromises();
+
+    const types = chromeRuntime.sendMessage.mock.calls.map(([message]) => (message as { type?: string }).type);
+    expect(types).not.toContain(MessageTypes.LookupRequest);
+    expect(types).not.toContain(MessageTypes.TranslationRequest);
+    expect(showNotice).toHaveBeenCalledWith("Enable translation to look up Chinese or Japanese words.");
+  });
+
+  it("routes English selection to Japanese translation when EN<->JA pair is active", async () => {
+    translationEnabled = true;
+    translationMode = "dual";
+    dualPair = "EN<->JA";
+    installMinimalDom("hello");
+
+    const chromeRuntime = installFakeChromeRuntime({
+      onLookup: () => ({
+        ok: true,
+        entry: { displayWord: "hello", definition: "A greeting.", pronunciationAvailable: true }
+      }),
+      onTranslate: () => ({ ok: true, translatedWord: "こんにちは" })
+    });
+
+    await import("../../../src/content/index");
+
+    chromeRuntime.dispatchLookupTrigger();
+    await flushPromises();
+
+    const translationCall = chromeRuntime.sendMessage.mock.calls.find(
+      ([message]) => (message as { type?: string }).type === MessageTypes.TranslationRequest
+    );
+    expect(translationCall).toBeTruthy();
+    const payload = translationCall?.[0] as { payload?: { targetLang?: string; sourceLang?: string } };
+    expect(payload.payload?.targetLang).toBe("ja");
+    expect(payload.payload?.sourceLang).toBe("en");
   });
 });

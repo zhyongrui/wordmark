@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageTypes } from "../../../src/shared/messages";
+import type { TranslationDirection } from "../../../src/shared/translation/settings";
 
 let translationEnabled = false;
 let translationMode: "single" | "dual" = "single";
-let singleDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
-let lastDirection: "EN->ZH" | "ZH->EN" = "EN->ZH";
+let singleDirection: TranslationDirection = "EN->ZH";
+let lastDirection: TranslationDirection = "EN->ZH";
+let dualPair: "EN<->ZH" | "EN<->JA" | "ZH<->JA" = "EN<->ZH";
 let definitionBackfillEnabled = false;
 let definitionTranslationEnabled = false;
 
@@ -21,7 +23,7 @@ vi.mock("../../../src/shared/translation/settings", () => {
       providerId: "gemini",
       mode: translationMode,
       singleDirection,
-      dualPair: "EN<->ZH",
+      dualPair,
       lastDirection,
       definitionBackfillEnabled,
       definitionTranslationEnabled
@@ -146,6 +148,7 @@ beforeEach(() => {
   translationMode = "single";
   singleDirection = "EN->ZH";
   lastDirection = "EN->ZH";
+  dualPair = "EN<->ZH";
   definitionBackfillEnabled = false;
   definitionTranslationEnabled = false;
   installMinimalDom();

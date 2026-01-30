@@ -4,6 +4,7 @@ export type WordEntry = {
   normalizedWord: string;
   displayWord: string;
   wordZh?: string;
+  wordJa?: string;
   wordEn?: string;
   queryCount: number;
   lastQueriedAt: string;

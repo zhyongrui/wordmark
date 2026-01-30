@@ -76,8 +76,18 @@ describe("translation TTL cache (background)", () => {
     const fetchMock = vi.fn(async () => makeGeminiResponse({ translatedWord: "你好", translatedDefinition: "问候语。" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await handleTranslationRequest({ word: "hello-cache-hit", definition: "A greeting.", targetLang: "zh" });
-    await handleTranslationRequest({ word: "hello-cache-hit", definition: "A greeting.", targetLang: "zh" });
+    await handleTranslationRequest({
+      word: "hello-cache-hit",
+      definition: "A greeting.",
+      sourceLang: "en",
+      targetLang: "zh"
+    });
+    await handleTranslationRequest({
+      word: "hello-cache-hit",
+      definition: "A greeting.",
+      sourceLang: "en",
+      targetLang: "zh"
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(local.set).toHaveBeenCalledTimes(2);
@@ -94,13 +104,28 @@ describe("translation TTL cache (background)", () => {
     const fetchMock = vi.fn(async () => makeGeminiResponse({ translatedWord: "你好", translatedDefinition: "问候语。" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await handleTranslationRequest({ word: "hello-ttl", definition: "A greeting.", targetLang: "zh" });
+    await handleTranslationRequest({
+      word: "hello-ttl",
+      definition: "A greeting.",
+      sourceLang: "en",
+      targetLang: "zh"
+    });
 
     vi.setSystemTime(new Date("2025-01-01T00:01:00Z"));
-    await handleTranslationRequest({ word: "hello-ttl", definition: "A greeting.", targetLang: "zh" });
+    await handleTranslationRequest({
+      word: "hello-ttl",
+      definition: "A greeting.",
+      sourceLang: "en",
+      targetLang: "zh"
+    });
 
     vi.setSystemTime(new Date("2025-01-01T00:31:00Z"));
-    await handleTranslationRequest({ word: "hello-ttl", definition: "A greeting.", targetLang: "zh" });
+    await handleTranslationRequest({
+      word: "hello-ttl",
+      definition: "A greeting.",
+      sourceLang: "en",
+      targetLang: "zh"
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -113,8 +138,18 @@ describe("translation TTL cache (background)", () => {
     const fetchMock = vi.fn(async () => ({ ok: false, status: 429, text: async () => "" }) as unknown as Response);
     vi.stubGlobal("fetch", fetchMock);
 
-    await handleTranslationRequest({ word: "hello-no-cache", definition: null, targetLang: "zh" });
-    await handleTranslationRequest({ word: "hello-no-cache", definition: null, targetLang: "zh" });
+    await handleTranslationRequest({
+      word: "hello-no-cache",
+      definition: null,
+      sourceLang: "en",
+      targetLang: "zh"
+    });
+    await handleTranslationRequest({
+      word: "hello-no-cache",
+      definition: null,
+      sourceLang: "en",
+      targetLang: "zh"
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

@@ -1,4 +1,7 @@
-import { DictionaryEntry } from "../dictionary";
+export type DictionaryEntry = {
+  definition: string;
+  pronunciationAvailable: boolean;
+};
 
 export type LookupInput = {
   normalizedWord: string;

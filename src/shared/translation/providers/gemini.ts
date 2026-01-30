@@ -7,6 +7,7 @@ import {
 } from "../types";
 import { getGeminiConfig } from "../gemini";
 import type { TranslationProvider } from "./provider";
+import { getLanguageDisplayName } from "../directions";
 
 const DEFAULT_TIMEOUT_MS = 20000;
 const GEMINI_BASE_URLS = [
@@ -119,28 +120,20 @@ const readErrorSnippet = async (response: Response): Promise<string | null> => {
   }
 };
 
-const getTargetLanguageLabel = (targetLang: TranslationRequest["targetLang"]): string => {
-  return targetLang === "zh" ? "Chinese (Simplified)" : "English";
-};
-
-const getSourceLanguageLabel = (targetLang: TranslationRequest["targetLang"]): string => {
-  return targetLang === "zh" ? "English" : "Chinese";
-};
-
 const buildPrompt = (request: TranslationRequest): string => {
   const definitionText =
     typeof request.definition === "string" && request.definition.trim()
       ? request.definition.trim()
       : null;
 
-  const placeholder = request.targetLang === "zh" ? "<zh>" : "<en>";
+  const placeholder = `<${request.targetLang}>`;
   const schema =
     definitionText == null
       ? `{"translatedWord":"${placeholder}"}`
       : `{"translatedWord":"${placeholder}","translatedDefinition":"${placeholder}"}`;
 
   return [
-    `Translate the following ${getSourceLanguageLabel(request.targetLang)} content into ${getTargetLanguageLabel(
+    `Translate the following ${getLanguageDisplayName(request.sourceLang)} content into ${getLanguageDisplayName(
       request.targetLang
     )}.`,
     `Return ONLY a valid JSON object matching this schema exactly: ${schema}`,
@@ -261,14 +254,15 @@ export const geminiProvider: TranslationProvider = {
     apiKey: string,
     options?: { signal?: AbortSignal }
   ): Promise<TranslationResponse> => {
-    const { word, definition, targetLang } = request;
-    if (targetLang !== "zh" && targetLang !== "en") {
+    const { word, definition, targetLang, sourceLang } = request;
+    if (targetLang !== "zh" && targetLang !== "en" && targetLang !== "ja") {
       return createTranslationError("provider_error");
     }
 
     const minimalRequest: TranslationRequest = {
       word,
       definition: typeof definition === "string" ? definition : null,
+      sourceLang,
       targetLang
     };
 
