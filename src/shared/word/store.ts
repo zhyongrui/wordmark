@@ -347,15 +347,77 @@ export const updateDefinitionJa = async (normalizedWord: string, definitionJa: s
   await writeStore(nextStore);
 };
 
-export const deleteWordEntry = async (normalizedWord: string): Promise<void> => {
+export type DeleteWordResult = {
+  fullyDeleted: boolean;
+  remainingTranslations: string[];
+};
+
+export const deleteWordEntry = async (
+  normalizedWord: string,
+  direction?: string
+): Promise<DeleteWordResult> => {
   const store = await readStore();
-  if (!store.wordsByKey[normalizedWord]) {
-    return;
+  const existing = store.wordsByKey[normalizedWord];
+  if (!existing) {
+    return { fullyDeleted: true, remainingTranslations: [] };
   }
 
-  const nextWords = { ...store.wordsByKey };
-  delete nextWords[normalizedWord];
-  await writeStore({ ...store, wordsByKey: nextWords });
+  // If no direction specified, delete the entire entry (backward compatibility)
+  if (!direction) {
+    const nextWords = { ...store.wordsByKey };
+    delete nextWords[normalizedWord];
+    await writeStore({ ...store, wordsByKey: nextWords });
+    return { fullyDeleted: true, remainingTranslations: [] };
+  }
+
+  // Determine which fields to clear based on direction
+  const updated = { ...existing };
+
+  if (direction === "EN->ZH" || direction === "EN<->ZH") {
+    updated.wordZh = undefined;
+    updated.definitionZh = undefined;
+  } else if (direction === "ZH->EN") {
+    updated.wordEn = undefined;
+    updated.definitionEn = undefined;
+  } else if (direction === "EN->JA" || direction === "EN<->JA") {
+    updated.wordJa = undefined;
+    updated.definitionJa = undefined;
+  } else if (direction === "JA->EN") {
+    updated.wordEn = undefined;
+    updated.definitionEn = undefined;
+  } else if (direction === "ZH->JA" || direction === "ZH<->JA") {
+    updated.wordJa = undefined;
+    updated.definitionJa = undefined;
+  } else if (direction === "JA->ZH") {
+    updated.wordZh = undefined;
+    updated.definitionZh = undefined;
+  }
+
+  // Check if any translations remain
+  const remainingTranslations: string[] = [];
+  if (updated.wordZh) remainingTranslations.push("ZH");
+  if (updated.wordJa) remainingTranslations.push("JA");
+  if (updated.wordEn) remainingTranslations.push("EN");
+
+  // If no translations remain, delete the entire entry
+  if (remainingTranslations.length === 0) {
+    const nextWords = { ...store.wordsByKey };
+    delete nextWords[normalizedWord];
+    await writeStore({ ...store, wordsByKey: nextWords });
+    return { fullyDeleted: true, remainingTranslations: [] };
+  }
+
+  // Otherwise, update the entry with cleared fields
+  const nextStore: StorageEnvelope = {
+    ...store,
+    wordsByKey: {
+      ...store.wordsByKey,
+      [normalizedWord]: updated
+    }
+  };
+
+  await writeStore(nextStore);
+  return { fullyDeleted: false, remainingTranslations };
 };
 
 export const __resetMemoryStore = (): void => {

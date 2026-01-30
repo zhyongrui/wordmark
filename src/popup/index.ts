@@ -16,7 +16,7 @@ type WordsResponse =
   | { ok: false; error: string };
 
 type DeleteResponse =
-  | { ok: true }
+  | { ok: true; fullyDeleted: boolean; remainingTranslations: string[] }
   | { ok: false; error: string };
 
 type PreferencesResponse =
@@ -56,6 +56,7 @@ const languageFilter = document.getElementById("language-filter") as HTMLDivElem
 const languageToggle = document.getElementById("language-toggle") as HTMLButtonElement | null;
 const languageList = document.getElementById("language-list") as HTMLDivElement | null;
 const languageLabel = languageToggle?.querySelector(".wordmark-language-label") as HTMLSpanElement | null;
+const notificationContainer = document.getElementById("notification-container") as HTMLDivElement | null;
 const directionButtons = directionToggle
   ? Array.from(directionToggle.querySelectorAll<HTMLButtonElement>(".wordmark-direction-button"))
   : [];
@@ -75,7 +76,8 @@ if (
   !languageFilter ||
   !languageToggle ||
   !languageList ||
-  !languageLabel
+  !languageLabel ||
+  !notificationContainer
 ) {
   throw new Error("Popup root elements missing.");
 }
@@ -103,6 +105,21 @@ const formatDate = (value: string) => {
 const setEmptyState = (message: string, visible: boolean) => {
   emptyEl.textContent = message;
   emptyEl.hidden = !visible;
+};
+
+const showNotification = (message: string, duration = 3000) => {
+  const notification = document.createElement("div");
+  notification.className = "wordmark-notification";
+  notification.textContent = message;
+  notificationContainer.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.opacity = "0";
+    notification.style.transition = "opacity 0.3s ease-out";
+    setTimeout(() => {
+      notification.remove();
+    }, 300);
+  }, duration);
 };
 
 const setToggleState = (enabled: boolean) => {
@@ -303,12 +320,23 @@ const renderList = () => {
       remove.disabled = true;
       const response = await sendMessage<DeleteResponse>({
         type: MessageTypes.DeleteWord,
-        payload: { normalizedWord: entry.normalizedWord }
+        payload: { normalizedWord: entry.normalizedWord, direction: listDirection }
       });
 
       if (!response || !response.ok) {
         remove.disabled = false;
         return;
+      }
+
+      // Show notification if word still exists in other modes
+      if (!response.fullyDeleted && response.remainingTranslations.length > 0) {
+        const langNames: Record<string, string> = {
+          EN: "英语",
+          ZH: "中文",
+          JA: "日语"
+        };
+        const remaining = response.remainingTranslations.map((lang) => langNames[lang] || lang).join("、");
+        showNotification(`已删除当前模式的翻译。该词在 ${remaining} 模式下仍有记录。`);
       }
 
       await refreshWords();

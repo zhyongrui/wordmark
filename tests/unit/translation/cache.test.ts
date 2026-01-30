@@ -93,7 +93,7 @@ describe("translation TTL cache (background)", () => {
     expect(local.set).toHaveBeenCalledTimes(2);
   });
 
-  it("expires cached responses within 31 minutes", async () => {
+  it("expires cached responses within 7 days", async () => {
     installMockChromeStorage();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2025-01-01T00:00:00Z"));
@@ -119,7 +119,7 @@ describe("translation TTL cache (background)", () => {
       targetLang: "zh"
     });
 
-    vi.setSystemTime(new Date("2025-01-01T00:31:00Z"));
+    vi.setSystemTime(new Date("2025-01-08T00:01:00Z"));
     await handleTranslationRequest({
       word: "hello-ttl",
       definition: "A greeting.",

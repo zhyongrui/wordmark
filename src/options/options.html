@@ -121,6 +121,7 @@
         content: "▶";
         margin-right: 8px;
         font-size: 10px;
+        color: #000000;
         transition: transform 0.2s;
       }
       .toggle-box details[open] summary::before {
@@ -151,6 +152,14 @@
         color: #374151;
         cursor: pointer;
       }
+      .toggle-box details .detail-option .label-text-accent {
+        background: #fff7ed;
+        border: 1px solid #fbbf24;
+        border-radius: 6px;
+        padding: 4px 8px;
+        color: #92400e;
+        font-weight: 600;
+      }
       .toggle-box details .detail-option input[type="checkbox"] {
         margin-right: 8px;
       }
@@ -173,6 +182,10 @@
         border-color: #fbbf24;
       }
       .toggle-box-accent label {
+        font-weight: 700;
+        color: #92400e;
+      }
+      .toggle-box-accent details summary {
         font-weight: 700;
         color: #92400e;
       }
@@ -354,11 +367,25 @@
 
         <div class="field">
           <div class="toggle-row grid-row">
-            <div class="toggle-box toggle-box-accent">
-              <label>
-                <input type="checkbox" id="translation-enabled" />
-                Enable translation
-              </label>
+            <div class="toggle-box toggle-box-accent" id="translation-toggle">
+              <details>
+                <summary>Translation</summary>
+                <div class="detail-content">
+                  <div class="detail-option">
+                    <label>
+                      <input type="checkbox" id="translation-enabled" />
+                      <span class="label-text-accent">Enable this feature</span>
+                    </label>
+                  </div>
+                  <div class="detail-option">
+                    <label>
+                      <input type="checkbox" id="save-queried-words" />
+                      Save queried words to list
+                    </label>
+                    <div class="detail-hint">Automatically add looked-up words to your word list</div>
+                  </div>
+                </div>
+              </details>
             </div>
             <div class="toggle-box" id="definition-backfill-toggle">
               <details>

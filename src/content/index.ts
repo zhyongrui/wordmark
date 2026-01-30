@@ -235,20 +235,22 @@ const triggerLookup = async () => {
     language: selectionLanguage
   };
   if (translationEnabled && directionInfo) {
-    void requestTranslation(
+    const translationPromise = requestTranslation(
       sessionId,
       entry.displayWord,
       localDefinition,
       selectionLanguage,
       directionInfo.targetLang
     );
-    if (
-      definitionBackfillEnabled &&
-      localDefinition == null &&
-      (selectionLanguage === "en" || selectionLanguage === "zh" || selectionLanguage === "ja")
-    ) {
-      void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
-    }
+    void translationPromise.then(() => {
+      if (
+        definitionBackfillEnabled &&
+        localDefinition == null &&
+        (selectionLanguage === "en" || selectionLanguage === "zh" || selectionLanguage === "ja")
+      ) {
+        void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
+      }
+    });
   }
 };
 

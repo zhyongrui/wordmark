@@ -18,10 +18,11 @@ export const handleListWords = async (): Promise<ListWordsResponse> => {
 
 export type DeleteWordPayload = {
   normalizedWord: string;
+  direction?: string;
 };
 
 export type DeleteWordResponse =
-  | { ok: true }
+  | { ok: true; fullyDeleted: boolean; remainingTranslations: string[] }
   | { ok: false; error: "invalid-payload" | "unknown" };
 
 export const handleDeleteWord = async (payload: DeleteWordPayload): Promise<DeleteWordResponse> => {
@@ -30,8 +31,8 @@ export const handleDeleteWord = async (payload: DeleteWordPayload): Promise<Dele
   }
 
   try {
-    await deleteWordEntry(payload.normalizedWord);
-    return { ok: true };
+    const result = await deleteWordEntry(payload.normalizedWord, payload.direction);
+    return { ok: true, ...result };
   } catch {
     return { ok: false, error: "unknown" };
   }

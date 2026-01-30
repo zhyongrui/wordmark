@@ -21,6 +21,7 @@ export type TranslationSettings = {
   definitionTranslationEnabled: boolean;
   saveDefinitionBackfill: boolean;
   saveDefinitionTranslation: boolean;
+  saveQueriedWords: boolean;
 };
 
 const defaultSettings: TranslationSettings = {
@@ -33,7 +34,8 @@ const defaultSettings: TranslationSettings = {
   definitionBackfillEnabled: false,
   definitionTranslationEnabled: false,
   saveDefinitionBackfill: true,
-  saveDefinitionTranslation: true
+  saveDefinitionTranslation: true,
+  saveQueriedWords: true
 };
 
 type StorageArea = {
@@ -138,6 +140,9 @@ const parseSettings = (input: unknown): TranslationSettings => {
     typeof saveDefinitionTranslationRaw === "boolean"
       ? saveDefinitionTranslationRaw
       : defaultSettings.saveDefinitionTranslation;
+  const saveQueriedWordsRaw = (input as { saveQueriedWords?: unknown }).saveQueriedWords;
+  const saveQueriedWords =
+    typeof saveQueriedWordsRaw === "boolean" ? saveQueriedWordsRaw : defaultSettings.saveQueriedWords;
 
   return {
     enabled,
@@ -149,7 +154,8 @@ const parseSettings = (input: unknown): TranslationSettings => {
     definitionBackfillEnabled,
     definitionTranslationEnabled,
     saveDefinitionBackfill,
-    saveDefinitionTranslation
+    saveDefinitionTranslation,
+    saveQueriedWords
   };
 };
 
@@ -202,7 +208,9 @@ export const updateTranslationSettings = async (
     saveDefinitionTranslation:
       typeof update.saveDefinitionTranslation === "boolean"
         ? update.saveDefinitionTranslation
-        : current.saveDefinitionTranslation
+        : current.saveDefinitionTranslation,
+    saveQueriedWords:
+      typeof update.saveQueriedWords === "boolean" ? update.saveQueriedWords : current.saveQueriedWords
   };
 
   await writeTranslationSettings(next);

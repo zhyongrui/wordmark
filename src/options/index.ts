@@ -23,6 +23,8 @@ const byId = <T extends HTMLElement>(id: string): T | null => {
 };
 
 const enabledCheckbox = byId<HTMLInputElement>("translation-enabled");
+const saveQueriedWordsCheckbox = byId<HTMLInputElement>("save-queried-words");
+const translationToggle = byId<HTMLDivElement>("translation-toggle");
 const definitionBackfillCheckbox = byId<HTMLInputElement>("definition-backfill-enabled");
 const definitionTranslationCheckbox = byId<HTMLInputElement>("definition-translation-enabled");
 const saveDefinitionBackfillCheckbox = byId<HTMLInputElement>("save-definition-backfill");
@@ -262,6 +264,9 @@ const refresh = async () => {
 
   const settings = await readTranslationSettings();
   enabledCheckbox.checked = settings.enabled;
+  if (saveQueriedWordsCheckbox) {
+    saveQueriedWordsCheckbox.checked = settings.saveQueriedWords;
+  }
   if (definitionBackfillCheckbox) {
     definitionBackfillCheckbox.checked = settings.definitionBackfillEnabled;
   }
@@ -343,6 +348,8 @@ const refresh = async () => {
 const initialize = () => {
   if (
     !enabledCheckbox ||
+    !saveQueriedWordsCheckbox ||
+    !translationToggle ||
     !definitionBackfillCheckbox ||
     !definitionTranslationCheckbox ||
     !definitionTranslationToggle ||
@@ -418,6 +425,14 @@ const initialize = () => {
       await refresh();
     })();
   });
+
+  if (saveQueriedWordsCheckbox) {
+    saveQueriedWordsCheckbox.addEventListener("change", () => {
+      void (async () => {
+        await updateTranslationSettings({ saveQueriedWords: saveQueriedWordsCheckbox.checked });
+      })();
+    });
+  }
 
   definitionBackfillCheckbox.addEventListener("change", () => {
     void (async () => {

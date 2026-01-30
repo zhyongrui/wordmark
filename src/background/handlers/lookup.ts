@@ -1,7 +1,8 @@
 import type { DefinitionSource } from "../../shared/messages";
 import { shapeLookupResult } from "../../shared/word/lookup";
 import { normalizeSelection } from "../../shared/word/normalize";
-import { recordLookup } from "../../shared/word/store";
+import { recordLookup, readStore } from "../../shared/word/store";
+import { readTranslationSettings } from "../../shared/translation/settings";
 
 export type LookupRequestPayload = {
   selectedText: string;
@@ -33,7 +34,24 @@ export const handleLookupRequest = async (payload: LookupRequestPayload): Promis
     ttsAvailable: Boolean(payload.ttsAvailable)
   });
 
-  const storedEntry = await recordLookup(result);
+  // Check if we should save queried words
+  const settings = await readTranslationSettings();
+  let storedEntry;
+
+  if (settings.saveQueriedWords) {
+    storedEntry = await recordLookup(result);
+  } else {
+    // Don't record, but check if word already exists
+    const store = await readStore();
+    storedEntry = store.wordsByKey[selection.normalizedWord] || {
+      normalizedWord: selection.normalizedWord,
+      displayWord: payload.selectedText,
+      queryCount: 0,
+      lastQueriedAt: new Date().toISOString(),
+      pronunciationAvailable: result.pronunciationAvailable
+    };
+  }
+
   const hasLocalDefinition =
     (selection.language === "en" && typeof storedEntry.definitionEn === "string" && storedEntry.definitionEn.trim()) ||
     (selection.language === "zh" && typeof storedEntry.definitionZh === "string" && storedEntry.definitionZh.trim()) ||

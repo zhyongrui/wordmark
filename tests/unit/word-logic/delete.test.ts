@@ -20,9 +20,11 @@ describe("deleteWordEntry", () => {
       pronunciationAvailable: false
     });
 
-    await deleteWordEntry("hello");
+    const result = await deleteWordEntry("hello");
     const store = await readStore();
 
+    expect(result.fullyDeleted).toBe(true);
+    expect(result.remainingTranslations).toEqual([]);
     expect(store.wordsByKey.hello).toBeUndefined();
     expect(store.wordsByKey.world?.normalizedWord).toBe("world");
   });
@@ -35,9 +37,11 @@ describe("deleteWordEntry", () => {
       pronunciationAvailable: false
     });
 
-    await deleteWordEntry("missing");
+    const result = await deleteWordEntry("missing");
     const store = await readStore();
 
+    expect(result.fullyDeleted).toBe(true);
+    expect(result.remainingTranslations).toEqual([]);
     expect(store.wordsByKey.hello?.normalizedWord).toBe("hello");
   });
 });

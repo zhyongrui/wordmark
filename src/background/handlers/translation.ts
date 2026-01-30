@@ -27,7 +27,7 @@ import { updateWordEn, updateWordJa, updateWordZh } from "../../shared/word/stor
 export type TranslationRequestPayload = TranslationRequest;
 
 const inSessionDeduper = createInSessionDeduper<TranslationResponse>();
-const translationResultCache = createInMemoryTtlCache<TranslationSuccess>({ ttlMs: 20 * 60 * 1000 });
+const translationResultCache = createInMemoryTtlCache<TranslationSuccess>({ ttlMs: 7 * 24 * 60 * 60 * 1000 });
 
 const getProvider = (providerId: string) => {
   switch (providerId) {

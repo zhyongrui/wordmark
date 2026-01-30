@@ -109,6 +109,7 @@ const installMockDom = () => {
   elements["word-count"] = create("div", "word-count");
   elements["settings-button"] = create("button", "settings-button");
   elements["highlight-toggle"] = create("button", "highlight-toggle");
+  elements["notification-container"] = create("div", "notification-container");
 
   const directionToggle = create("div", "direction-toggle");
   const enButton = create("button");
