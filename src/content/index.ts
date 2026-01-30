@@ -40,7 +40,9 @@ type LookupResponse =
       ok: true;
       entry: {
         displayWord: string;
-        definition: string | null;
+        definitionEn?: string;
+        definitionZh?: string;
+        definitionJa?: string;
         definitionSource: DefinitionSource;
         pronunciationAvailable: boolean;
       };
@@ -63,7 +65,14 @@ let translationEnabled = false;
 let definitionBackfillEnabled = false;
 let definitionTranslationEnabled = false;
 let latestLookup:
-  | { sessionId: number; word: string; definition: string | null; language: WordLanguage }
+  | {
+      sessionId: number;
+      word: string;
+      definitionEn?: string;
+      definitionZh?: string;
+      definitionJa?: string;
+      language: WordLanguage;
+    }
   | null = null;
 
 const getDefinitionBackfillErrorMessage = (error: Exclude<DefinitionBackfillResponse, { ok: true }>["error"]) => {
@@ -81,6 +90,22 @@ const getDefinitionBackfillErrorMessage = (error: Exclude<DefinitionBackfillResp
     case "not_configured":
       return "Definition not configured. Set an API key in Options.";
   }
+};
+
+const getDefinitionForLanguage = (
+  entry: { definitionEn?: string; definitionZh?: string; definitionJa?: string },
+  language: WordLanguage
+): string | null => {
+  if (language === "en" && entry.definitionEn) {
+    return entry.definitionEn;
+  }
+  if (language === "zh" && entry.definitionZh) {
+    return entry.definitionZh;
+  }
+  if (language === "ja" && entry.definitionJa) {
+    return entry.definitionJa;
+  }
+  return null;
 };
 
 const sendMessage = async <T>(message: unknown): Promise<T | null> => {
@@ -125,11 +150,6 @@ const triggerLookup = async () => {
   translationEnabled = Boolean(settings.enabled);
   definitionBackfillEnabled = Boolean(settings.definitionBackfillEnabled);
   definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
-  if ((selectionLanguage === "zh" || selectionLanguage === "ja") && !translationEnabled) {
-    ensureOverlayAutoClose();
-    showNotice("Enable translation to look up Chinese or Japanese words.");
-    return;
-  }
 
   let directionInfo:
     | {
@@ -190,10 +210,11 @@ const triggerLookup = async () => {
   const entry = response.entry;
   lookupSessionId += 1;
   const sessionId = lookupSessionId;
+  const localDefinition = getDefinitionForLanguage(entry, selectionLanguage);
   ensureOverlayAutoClose();
   showLookupOverlay({
     word: entry.displayWord,
-    definition: entry.definition,
+    definition: localDefinition,
     pronunciationAvailable: entry.pronunciationAvailable,
     sourceLang: selectionLanguage,
     anchorRect,
@@ -208,21 +229,23 @@ const triggerLookup = async () => {
   latestLookup = {
     sessionId,
     word: entry.displayWord,
-    definition: entry.definition,
+    definitionEn: entry.definitionEn,
+    definitionZh: entry.definitionZh,
+    definitionJa: entry.definitionJa,
     language: selectionLanguage
   };
   if (translationEnabled && directionInfo) {
     void requestTranslation(
       sessionId,
       entry.displayWord,
-      entry.definition,
+      localDefinition,
       selectionLanguage,
       directionInfo.targetLang
     );
     if (
       definitionBackfillEnabled &&
-      entry.definition == null &&
-      (selectionLanguage === "en" || selectionLanguage === "zh")
+      localDefinition == null &&
+      (selectionLanguage === "en" || selectionLanguage === "zh" || selectionLanguage === "ja")
     ) {
       void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
     }
@@ -350,7 +373,8 @@ const syncTranslationEnabledState = async () => {
   definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
   const lookup = latestLookup;
   if (!translationEnabled && lookup && lookup.sessionId === lookupSessionId && isOverlayOpen()) {
-    resetTranslationUi(lookup.definition, lookup.language);
+    const localDefinition = getDefinitionForLanguage(lookup, lookup.language);
+    resetTranslationUi(localDefinition, lookup.language);
   }
 };
 

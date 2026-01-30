@@ -39,9 +39,9 @@ describe("translation availability helper", () => {
     vi.unstubAllGlobals();
   });
 
-  it("reports enabled=false and configured=false by default", async () => {
+  it("reports enabled=true and configured=false by default", async () => {
     const status = await getTranslationAvailability();
-    expect(status).toEqual({ enabled: false, configured: false });
+    expect(status).toEqual({ enabled: true, configured: false });
   });
 
   it("reports configured=false when enabled but no API key", async () => {

@@ -35,9 +35,9 @@ describe("translation settings", () => {
     vi.unstubAllGlobals();
   });
 
-  it("defaults to enabled=false", async () => {
+  it("defaults to enabled=true", async () => {
     const settings = await readTranslationSettings();
-    expect(settings.enabled).toBe(false);
+    expect(settings.enabled).toBe(true);
     expect(settings.mode).toBe("single");
     expect(settings.singleDirection).toBe("EN->ZH");
     expect(settings.dualPair).toBe("EN<->ZH");

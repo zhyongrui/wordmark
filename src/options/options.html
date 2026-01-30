@@ -95,11 +95,77 @@
         padding: 10px 12px;
         width: 100%;
         box-sizing: border-box;
+        position: relative;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+      }
+      .toggle-box details {
+        width: 100%;
+      }
+      .toggle-box details summary {
+        font-weight: 600;
+        font-size: 13px;
+        color: #111827;
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        user-select: none;
+        min-height: 24px;
+      }
+      .toggle-box details summary::-webkit-details-marker {
+        display: none;
+      }
+      .toggle-box details summary::before {
+        content: "▶";
+        margin-right: 8px;
+        font-size: 10px;
+        transition: transform 0.2s;
+      }
+      .toggle-box details[open] summary::before {
+        transform: rotate(90deg);
+      }
+      .toggle-box details .detail-content {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 4px;
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 12px;
+        z-index: 1000;
+        opacity: 1;
+      }
+      .toggle-box details .detail-option {
+        margin: 8px 0;
+      }
+      .toggle-box details .detail-option label {
+        display: flex;
+        align-items: center;
+        font-weight: 400;
+        font-size: 13px;
+        color: #374151;
+        cursor: pointer;
+      }
+      .toggle-box details .detail-option input[type="checkbox"] {
+        margin-right: 8px;
+      }
+      .toggle-box details .detail-option .detail-hint {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 0px;
+        margin-left: 26px;
+        line-height: 1.4;
       }
       .toggle-box label {
         display: flex;
         align-items: center;
         font-weight: 600;
+        font-size: 13px;
         color: #111827;
       }
       .toggle-box-accent {
@@ -110,7 +176,10 @@
         font-weight: 700;
         color: #92400e;
       }
-      .toggle-box.is-disabled {
+      .toggle-box.is-disabled details summary {
+        opacity: 0.6;
+      }
+      .toggle-box.is-disabled label {
         opacity: 0.6;
       }
       .row {
@@ -278,8 +347,8 @@
       <section class="card">
         <h2>Translation (Chinese)</h2>
         <p class="muted">
-          Translation is optional and <strong>disabled by default</strong>. When enabled, WordMark will only make a
-          network request after you explicitly click <strong>Translate</strong> in the lookup overlay. The request
+          Translation is <strong>enabled by default</strong>. When enabled, WordMark will make a
+          network request after you look up a word. The request
           sends only the looked-up word and (if present) the definition text.
         </p>
 
@@ -288,20 +357,48 @@
             <div class="toggle-box toggle-box-accent">
               <label>
                 <input type="checkbox" id="translation-enabled" />
-                Enable translation (opt-in)
+                Enable translation
               </label>
             </div>
             <div class="toggle-box" id="definition-backfill-toggle">
-              <label>
-                <input type="checkbox" id="definition-backfill-enabled" />
-                Same-language definition
-              </label>
+              <details>
+                <summary>Same-language definition</summary>
+                <div class="detail-content">
+                  <div class="detail-option">
+                    <label>
+                      <input type="checkbox" id="definition-backfill-enabled" />
+                      Enable this feature
+                    </label>
+                  </div>
+                  <div class="detail-option">
+                    <label>
+                      <input type="checkbox" id="save-definition-backfill" />
+                      Save results to storage
+                    </label>
+                    <div class="detail-hint">Saves API quota, faster lookups</div>
+                  </div>
+                </div>
+              </details>
             </div>
             <div class="toggle-box" id="definition-translation-toggle">
-              <label>
-                <input type="checkbox" id="definition-translation-enabled" />
-                Translate definitions
-              </label>
+              <details>
+                <summary>Translate definitions</summary>
+                <div class="detail-content">
+                  <div class="detail-option">
+                    <label>
+                      <input type="checkbox" id="definition-translation-enabled" />
+                      Enable this feature
+                    </label>
+                  </div>
+                  <div class="detail-option">
+                    <label>
+                      <input type="checkbox" id="save-definition-translation" />
+                      Save results to storage
+                    </label>
+                    <div class="detail-hint">Saves API quota, faster lookups</div>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
         </div>

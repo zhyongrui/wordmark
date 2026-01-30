@@ -19,17 +19,21 @@ export type TranslationSettings = {
   lastDirection: TranslationDirection;
   definitionBackfillEnabled: boolean;
   definitionTranslationEnabled: boolean;
+  saveDefinitionBackfill: boolean;
+  saveDefinitionTranslation: boolean;
 };
 
 const defaultSettings: TranslationSettings = {
-  enabled: false,
+  enabled: true,
   providerId: "gemini",
   mode: "single",
   singleDirection: "EN->ZH",
   dualPair: "EN<->ZH",
   lastDirection: "EN->ZH",
   definitionBackfillEnabled: false,
-  definitionTranslationEnabled: false
+  definitionTranslationEnabled: false,
+  saveDefinitionBackfill: true,
+  saveDefinitionTranslation: true
 };
 
 type StorageArea = {
@@ -126,6 +130,14 @@ const parseSettings = (input: unknown): TranslationSettings => {
     typeof definitionTranslationRaw === "boolean"
       ? definitionTranslationRaw
       : defaultSettings.definitionTranslationEnabled;
+  const saveDefinitionBackfillRaw = (input as { saveDefinitionBackfill?: unknown }).saveDefinitionBackfill;
+  const saveDefinitionBackfill =
+    typeof saveDefinitionBackfillRaw === "boolean" ? saveDefinitionBackfillRaw : defaultSettings.saveDefinitionBackfill;
+  const saveDefinitionTranslationRaw = (input as { saveDefinitionTranslation?: unknown }).saveDefinitionTranslation;
+  const saveDefinitionTranslation =
+    typeof saveDefinitionTranslationRaw === "boolean"
+      ? saveDefinitionTranslationRaw
+      : defaultSettings.saveDefinitionTranslation;
 
   return {
     enabled,
@@ -135,7 +147,9 @@ const parseSettings = (input: unknown): TranslationSettings => {
     dualPair,
     lastDirection,
     definitionBackfillEnabled,
-    definitionTranslationEnabled
+    definitionTranslationEnabled,
+    saveDefinitionBackfill,
+    saveDefinitionTranslation
   };
 };
 
@@ -182,7 +196,13 @@ export const updateTranslationSettings = async (
     definitionTranslationEnabled:
       typeof update.definitionTranslationEnabled === "boolean"
         ? update.definitionTranslationEnabled
-        : current.definitionTranslationEnabled
+        : current.definitionTranslationEnabled,
+    saveDefinitionBackfill:
+      typeof update.saveDefinitionBackfill === "boolean" ? update.saveDefinitionBackfill : current.saveDefinitionBackfill,
+    saveDefinitionTranslation:
+      typeof update.saveDefinitionTranslation === "boolean"
+        ? update.saveDefinitionTranslation
+        : current.saveDefinitionTranslation
   };
 
   await writeTranslationSettings(next);

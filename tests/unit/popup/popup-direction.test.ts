@@ -52,14 +52,34 @@ class MockElement {
   }
 
   click() {
-    (this.handlers.click ?? []).forEach((handler) => handler());
+    (this.handlers.click ?? []).forEach((handler) => handler({ stopPropagation: () => {} }));
   }
 
+  focus() {}
+
   querySelectorAll<T>(selector: string): T[] {
-    if (selector !== ".wordmark-direction-button") {
-      return [];
+    if (selector === ".wordmark-direction-button") {
+      return this.children.filter((child) => child.className.includes("wordmark-direction-button")) as T[];
     }
-    return this.children.filter((child) => child.className.includes("wordmark-direction-button")) as T[];
+    if (selector === ".wordmark-language-option") {
+      return this.children.filter((child) => child.className.includes("wordmark-language-option")) as T[];
+    }
+    return [];
+  }
+
+  querySelector<T>(selector: string): T | null {
+    if (!selector.startsWith(".")) {
+      return null;
+    }
+    const className = selector.slice(1);
+    return this.children.find((child) => child.className.includes(className)) as T | null;
+  }
+
+  contains(target: unknown): boolean {
+    if (this === target) {
+      return true;
+    }
+    return this.children.some((child) => child.contains(target));
   }
 
   setAttribute(name: string, value: string) {
@@ -101,9 +121,40 @@ const installMockDom = () => {
   directionToggle.appendChild(zhButton);
   elements["direction-toggle"] = directionToggle;
 
+  const languageFilter = create("div", "language-filter");
+  const languageToggle = create("button", "language-toggle");
+  const languageLabel = create("span");
+  languageLabel.className = "wordmark-language-label";
+  languageLabel.textContent = "ALL";
+  languageToggle.appendChild(languageLabel);
+  const languageList = create("div", "language-list");
+  const optionAll = create("button");
+  optionAll.className = "wordmark-language-option";
+  optionAll.dataset.language = "all";
+  const optionEn = create("button");
+  optionEn.className = "wordmark-language-option";
+  optionEn.dataset.language = "en";
+  const optionZh = create("button");
+  optionZh.className = "wordmark-language-option";
+  optionZh.dataset.language = "zh";
+  const optionJa = create("button");
+  optionJa.className = "wordmark-language-option";
+  optionJa.dataset.language = "ja";
+  languageList.appendChild(optionAll);
+  languageList.appendChild(optionEn);
+  languageList.appendChild(optionZh);
+  languageList.appendChild(optionJa);
+  languageFilter.appendChild(languageToggle);
+  languageFilter.appendChild(languageList);
+  elements["language-filter"] = languageFilter;
+  elements["language-toggle"] = languageToggle;
+  elements["language-list"] = languageList;
+  elements["language-label"] = languageLabel;
+
   (globalThis as { document?: unknown }).document = {
     getElementById: (id: string) => elements[id] ?? null,
-    createElement: (tag: string) => create(tag)
+    createElement: (tag: string) => create(tag),
+    addEventListener: vi.fn()
   };
 
   return elements;
@@ -249,5 +300,49 @@ describe("popup direction filtering", () => {
 
     wordEl = findByClass(elements["word-list"].children[0], "wordmark-word");
     expect(wordEl?.textContent).toContain("hello");
+  });
+
+  it("shows language filter and ignores translation labels when translation is disabled", async () => {
+    translationSettings = {
+      enabled: false,
+      providerId: "gemini",
+      mode: "single",
+      singleDirection: "EN->ZH",
+      dualPair: "EN<->ZH",
+      lastDirection: "EN->ZH",
+      definitionBackfillEnabled: false,
+      definitionTranslationEnabled: false
+    };
+
+    words = [
+      buildWord({ normalizedWord: "hello", displayWord: "hello", wordZh: "你好" }),
+      buildWord({ normalizedWord: "你好", displayWord: "你好", wordEn: "hello" }),
+      buildWord({ normalizedWord: "こんにちは", displayWord: "こんにちは", wordEn: "hello" })
+    ];
+
+    const elements = installMockDom();
+    installFakeChromeRuntime();
+
+    await import("../../../src/popup/index");
+    await flushPromises();
+
+    expect(elements["direction-toggle"].hidden).toBe(true);
+    expect(elements["language-filter"].hidden).toBe(false);
+    expect((elements["language-label"] as MockElement).textContent).toBe("ALL");
+    expect(elements["word-list"].children.length).toBe(3);
+    expect(elements["word-count"].textContent).toBe("3 WORDS");
+
+    const wordEl = findByClass(elements["word-list"].children[0], "wordmark-word");
+    const label = wordEl ? findByClass(wordEl, "wordmark-word-zh") : null;
+    expect(label).toBeNull();
+
+    const languageToggle = elements["language-toggle"] as MockElement;
+    const languageList = elements["language-list"] as MockElement;
+    languageToggle.click();
+    const optionZh = languageList.children[2];
+    optionZh.click();
+    expect(elements["word-list"].children.length).toBe(1);
+    const zhWordEl = findByClass(elements["word-list"].children[0], "wordmark-word");
+    expect(zhWordEl?.textContent).toContain("你好");
   });
 });

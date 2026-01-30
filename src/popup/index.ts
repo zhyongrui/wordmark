@@ -52,8 +52,15 @@ const countEl = document.getElementById("word-count") as HTMLDivElement | null;
 const settingsButton = document.getElementById("settings-button") as HTMLButtonElement | null;
 const toggleButton = document.getElementById("highlight-toggle") as HTMLButtonElement | null;
 const directionToggle = document.getElementById("direction-toggle") as HTMLDivElement | null;
+const languageFilter = document.getElementById("language-filter") as HTMLDivElement | null;
+const languageToggle = document.getElementById("language-toggle") as HTMLButtonElement | null;
+const languageList = document.getElementById("language-list") as HTMLDivElement | null;
+const languageLabel = languageToggle?.querySelector(".wordmark-language-label") as HTMLSpanElement | null;
 const directionButtons = directionToggle
   ? Array.from(directionToggle.querySelectorAll<HTMLButtonElement>(".wordmark-direction-button"))
+  : [];
+const languageOptions = languageList
+  ? Array.from(languageList.querySelectorAll<HTMLButtonElement>(".wordmark-language-option"))
   : [];
 
 if (
@@ -64,18 +71,24 @@ if (
   !countEl ||
   !toggleButton ||
   !settingsButton ||
-  !directionToggle
+  !directionToggle ||
+  !languageFilter ||
+  !languageToggle ||
+  !languageList ||
+  !languageLabel
 ) {
   throw new Error("Popup root elements missing.");
 }
 
 let words: WordEntry[] = [];
 let highlightEnabled = true;
+let translationEnabled = false;
 let translationMode: "single" | "dual" = "single";
 let singleDirection: TranslationDirection = "EN->ZH";
 let listDirection: TranslationDirection = "EN->ZH";
 let lastDirectionFromSettings: TranslationDirection = "EN->ZH";
 let dualDirections: [TranslationDirection, TranslationDirection] = ["EN->ZH", "ZH->EN"];
+let listLanguageFilter: "all" | "en" | "zh" | "ja" = "all";
 
 const formatCount = (count: number) => `${count} ${count === 1 ? "time" : "times"}`;
 
@@ -109,6 +122,9 @@ const getEntryLanguage = (entry: WordEntry): WordLanguage | null => {
 };
 
 const getLabelForEntry = (entry: WordEntry, sourceLanguage: WordLanguage | null): string => {
+  if (!translationEnabled) {
+    return "";
+  }
   if (!sourceLanguage) {
     return (
       typeof entry.wordZh === "string" && entry.wordZh.trim()
@@ -144,6 +160,12 @@ const getActiveDirection = (): TranslationDirection => {
 };
 
 const filterByDirection = (entries: WordEntry[]) => {
+  if (!translationEnabled) {
+    if (listLanguageFilter === "all") {
+      return entries;
+    }
+    return entries.filter((entry) => getEntryLanguage(entry) === listLanguageFilter);
+  }
   const activeDirection = getActiveDirection();
   const { source: sourceLanguage, target: targetLanguage } = getDirectionDetails(activeDirection);
 
@@ -169,12 +191,31 @@ const filterByDirection = (entries: WordEntry[]) => {
       return typeof entry.wordJa === "string" && entry.wordJa.trim().length > 0;
     }
 
-    return false;
+  return false;
   });
 };
 
-const updateDirectionToggle = () => {
+const setLanguageListOpen = (open: boolean) => {
+  languageList.hidden = !open;
+  languageToggle.setAttribute("aria-expanded", String(open));
+};
+
+const updateListControls = () => {
+  if (!translationEnabled) {
+    directionToggle.hidden = true;
+    languageFilter.hidden = false;
+    languageLabel.textContent = listLanguageFilter.toUpperCase();
+    languageOptions.forEach((option) => {
+      const language = option.dataset.language;
+      option.setAttribute("aria-selected", String(language === listLanguageFilter));
+    });
+    setLanguageListOpen(false);
+    return;
+  }
+
   directionToggle.hidden = false;
+  languageFilter.hidden = true;
+  setLanguageListOpen(false);
   directionToggle.dataset.mode = translationMode;
 
   if (translationMode === "single") {
@@ -294,12 +335,17 @@ const refreshWords = async () => {
 const refreshTranslationSettings = async () => {
   const settings = await readTranslationSettings();
   const modeChanged = settings.mode !== translationMode;
+  translationEnabled = settings.enabled;
   translationMode = settings.mode;
   singleDirection = settings.singleDirection;
   const nextDualDirections = getDualPairDirections(settings.dualPair);
   const pairChanged =
     nextDualDirections[0] !== dualDirections[0] || nextDualDirections[1] !== dualDirections[1];
   dualDirections = nextDualDirections;
+
+  if (!translationEnabled) {
+    listLanguageFilter = "all";
+  }
 
   if (translationMode === "single") {
     listDirection = singleDirection;
@@ -311,7 +357,7 @@ const refreshTranslationSettings = async () => {
   }
 
   lastDirectionFromSettings = settings.lastDirection;
-  updateDirectionToggle();
+  updateListControls();
   renderList();
 };
 
@@ -404,9 +450,51 @@ directionButtons.forEach((button) => {
       return;
     }
     listDirection = direction;
-    updateDirectionToggle();
+    updateListControls();
     renderList();
   });
+});
+
+languageToggle.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (translationEnabled) {
+    return;
+  }
+  setLanguageListOpen(languageList.hidden);
+});
+
+languageOptions.forEach((option) => {
+  option.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const language = option.dataset.language as "all" | "en" | "zh" | "ja" | undefined;
+    if (!language) {
+      return;
+    }
+    listLanguageFilter = language;
+    updateListControls();
+    renderList();
+    languageToggle.focus();
+  });
+});
+
+document.addEventListener("click", (event) => {
+  if (translationEnabled || languageList.hidden) {
+    return;
+  }
+  if (languageFilter.contains(event.target as Node)) {
+    return;
+  }
+  setLanguageListOpen(false);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") {
+    return;
+  }
+  if (!languageList.hidden) {
+    setLanguageListOpen(false);
+    languageToggle.focus();
+  }
 });
 
 void refreshWords();

@@ -165,8 +165,7 @@ describe("Spec 003 definition backfill fallback UI", () => {
         ok: true,
         entry: {
           displayWord: "apple",
-          definition: null,
-          definitionSource: "local",
+          definitionSource: "none",
           pronunciationAvailable: true
         }
       }),
@@ -202,8 +201,7 @@ describe("Spec 003 definition backfill fallback UI", () => {
         ok: true,
         entry: {
           displayWord: "你好",
-          definition: null,
-          definitionSource: "local",
+          definitionSource: "none",
           pronunciationAvailable: true
         }
       }),

@@ -155,7 +155,7 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const chromeRuntime = installFakeChromeRuntime({
       onLookup: () => ({
         ok: true,
-        entry: { displayWord: "hello", definition: "A greeting.", pronunciationAvailable: true }
+        entry: { displayWord: "hello", definitionEn: "A greeting.", pronunciationAvailable: true, definitionSource: "local" }
       }),
       onTranslate: () => ({ ok: false, error: "not_configured" })
     });
@@ -178,7 +178,7 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const chromeRuntime = installFakeChromeRuntime({
       onLookup: () => ({
         ok: true,
-        entry: { displayWord: "hello", definition: "A greeting.", pronunciationAvailable: true }
+        entry: { displayWord: "hello", definitionEn: "A greeting.", pronunciationAvailable: true, definitionSource: "local" }
       }),
       onTranslate: () => ({ ok: true, translatedWord: "你好" })
     });
@@ -205,7 +205,7 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const chromeRuntime = installFakeChromeRuntime({
       onLookup: () => ({
         ok: true,
-        entry: { displayWord: "你好", definition: null, pronunciationAvailable: true }
+        entry: { displayWord: "你好", pronunciationAvailable: true, definitionSource: "none" }
       }),
       onTranslate: () => ({ ok: true, translatedWord: "hello" })
     });
@@ -233,7 +233,7 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const chromeRuntime = installFakeChromeRuntime({
       onLookup: () => ({
         ok: true,
-        entry: { displayWord: "你好", definition: null, pronunciationAvailable: true }
+        entry: { displayWord: "你好", pronunciationAvailable: true, definitionSource: "none" }
       }),
       onTranslate: () => ({ ok: false, error: "not_configured" })
     });
@@ -257,7 +257,7 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const chromeRuntime = installFakeChromeRuntime({
       onLookup: () => ({
         ok: true,
-        entry: { displayWord: "hello", definition: "A greeting.", pronunciationAvailable: true }
+        entry: { displayWord: "hello", definitionEn: "A greeting.", pronunciationAvailable: true, definitionSource: "local" }
       }),
       onTranslate: () => ({ ok: false, error: "not_configured" })
     });
@@ -272,14 +272,14 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     expect(showNotice).toHaveBeenCalledWith("当前为 ZH→EN 模式，请到设置切换为 EN→ZH 或开启双向翻译模式");
   });
 
-  it("shows notice when Japanese lookup occurs while translation is disabled", async () => {
+  it("records Japanese lookup when translation is disabled without sending translation", async () => {
     translationEnabled = false;
     installMinimalDom("こんにちは");
 
     const chromeRuntime = installFakeChromeRuntime({
       onLookup: () => ({
         ok: true,
-        entry: { displayWord: "こんにちは", definition: null, pronunciationAvailable: true }
+        entry: { displayWord: "こんにちは", pronunciationAvailable: true, definitionSource: "none" }
       }),
       onTranslate: () => ({ ok: false, error: "not_configured" })
     });
@@ -290,9 +290,10 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     await flushPromises();
 
     const types = chromeRuntime.sendMessage.mock.calls.map(([message]) => (message as { type?: string }).type);
-    expect(types).not.toContain(MessageTypes.LookupRequest);
+    expect(types).toContain(MessageTypes.LookupRequest);
     expect(types).not.toContain(MessageTypes.TranslationRequest);
-    expect(showNotice).toHaveBeenCalledWith("Enable translation to look up Chinese or Japanese words.");
+    expect(showNotice).not.toHaveBeenCalled();
+    expect(showLookupOverlay).toHaveBeenCalled();
   });
 
   it("routes English selection to Japanese translation when EN<->JA pair is active", async () => {
@@ -304,7 +305,7 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const chromeRuntime = installFakeChromeRuntime({
       onLookup: () => ({
         ok: true,
-        entry: { displayWord: "hello", definition: "A greeting.", pronunciationAvailable: true }
+        entry: { displayWord: "hello", definitionEn: "A greeting.", pronunciationAvailable: true, definitionSource: "local" }
       }),
       onTranslate: () => ({ ok: true, translatedWord: "こんにちは" })
     });

@@ -1,5 +1,6 @@
 import type { DefinitionBackfillRequestPayload, DefinitionBackfillResponse } from "../../shared/messages";
 import { normalizeSelection } from "../../shared/word/normalize";
+import { updateDefinitionEn, updateDefinitionZh, updateDefinitionJa } from "../../shared/word/store";
 import { geminiDefinitionProvider } from "../../shared/definition/providers/gemini";
 import { deepseekDefinitionProvider } from "../../shared/definition/providers/deepseek";
 import { moonshotDefinitionProvider } from "../../shared/definition/providers/moonshot";
@@ -217,11 +218,44 @@ export const handleDefinitionBackfillRequest = async (
       ? await resolveDefinitionTranslation(sourceLang, targetLang, selection.normalizedWord, generated.definitionText)
       : null;
 
-    return toBackfillResponse({
+    const response = toBackfillResponse({
       sourceLang,
       targetLang,
       definitionText: generated.definitionText,
       translatedDefinition
     });
+
+    // Save definitions to storage if enabled
+    if (response.ok) {
+      const saveBackfill = settings.saveDefinitionBackfill;
+      const saveTranslation = settings.saveDefinitionTranslation;
+
+      try {
+        if (saveBackfill && response.definitionEn) {
+          await updateDefinitionEn(selection.normalizedWord, response.definitionEn);
+        }
+        if (saveBackfill && response.definitionZh) {
+          await updateDefinitionZh(selection.normalizedWord, response.definitionZh);
+        }
+        if (saveBackfill && response.definitionJa) {
+          await updateDefinitionJa(selection.normalizedWord, response.definitionJa);
+        }
+
+        // Save translated definitions if enabled
+        if (saveTranslation && translatedDefinition) {
+          if (targetLang === "en") {
+            await updateDefinitionEn(selection.normalizedWord, translatedDefinition);
+          } else if (targetLang === "zh") {
+            await updateDefinitionZh(selection.normalizedWord, translatedDefinition);
+          } else if (targetLang === "ja") {
+            await updateDefinitionJa(selection.normalizedWord, translatedDefinition);
+          }
+        }
+      } catch {
+        // Ignore storage errors
+      }
+    }
+
+    return response;
   });
 };

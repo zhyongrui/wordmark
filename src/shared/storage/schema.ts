@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type WordEntry = {
   normalizedWord: string;
@@ -6,9 +6,11 @@ export type WordEntry = {
   wordZh?: string;
   wordJa?: string;
   wordEn?: string;
+  definitionEn?: string;
+  definitionZh?: string;
+  definitionJa?: string;
   queryCount: number;
   lastQueriedAt: string;
-  definition?: string | null;
   pronunciationAvailable: boolean;
 };
 

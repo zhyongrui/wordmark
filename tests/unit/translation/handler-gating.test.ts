@@ -41,6 +41,8 @@ describe("background translation handler gating", () => {
   });
 
   it("returns disabled and does not call fetch when translation is disabled", async () => {
+    await updateTranslationSettings({ enabled: false });
+
     const response = await handleTranslationRequest({
       word: "hello",
       definition: "A greeting.",

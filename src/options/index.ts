@@ -25,6 +25,9 @@ const byId = <T extends HTMLElement>(id: string): T | null => {
 const enabledCheckbox = byId<HTMLInputElement>("translation-enabled");
 const definitionBackfillCheckbox = byId<HTMLInputElement>("definition-backfill-enabled");
 const definitionTranslationCheckbox = byId<HTMLInputElement>("definition-translation-enabled");
+const saveDefinitionBackfillCheckbox = byId<HTMLInputElement>("save-definition-backfill");
+const saveDefinitionTranslationCheckbox = byId<HTMLInputElement>("save-definition-translation");
+const definitionBackfillToggle = byId<HTMLDivElement>("definition-backfill-toggle");
 const definitionTranslationToggle = byId<HTMLDivElement>("definition-translation-toggle");
 const modeSingleButton = byId<HTMLButtonElement>("translation-mode-single");
 const modeDualButton = byId<HTMLButtonElement>("translation-mode-dual");
@@ -224,12 +227,31 @@ const updateProviderVisibility = () => {
   }
 };
 
-const updateDefinitionTranslationToggleState = (backfillEnabled: boolean) => {
+const updateDefinitionTranslationToggleState = (translationEnabled: boolean, backfillEnabled: boolean) => {
+  const shouldEnable = translationEnabled && backfillEnabled;
   if (definitionTranslationCheckbox) {
-    definitionTranslationCheckbox.disabled = !backfillEnabled;
+    definitionTranslationCheckbox.disabled = !shouldEnable;
   }
   if (definitionTranslationToggle) {
-    definitionTranslationToggle.classList.toggle("is-disabled", !backfillEnabled);
+    definitionTranslationToggle.classList.toggle("is-disabled", !shouldEnable);
+  }
+};
+
+const updateDefinitionTogglesState = (translationEnabled: boolean) => {
+  if (definitionBackfillCheckbox) {
+    definitionBackfillCheckbox.disabled = !translationEnabled;
+  }
+  if (definitionBackfillToggle) {
+    definitionBackfillToggle.classList.toggle("is-disabled", !translationEnabled);
+  }
+};
+
+const updateSaveCheckboxStates = (translationEnabled: boolean, backfillEnabled: boolean, definitionTranslationEnabled: boolean) => {
+  if (saveDefinitionBackfillCheckbox) {
+    saveDefinitionBackfillCheckbox.disabled = !translationEnabled || !backfillEnabled;
+  }
+  if (saveDefinitionTranslationCheckbox) {
+    saveDefinitionTranslationCheckbox.disabled = !translationEnabled || !backfillEnabled || !definitionTranslationEnabled;
   }
 };
 
@@ -246,7 +268,15 @@ const refresh = async () => {
   if (definitionTranslationCheckbox) {
     definitionTranslationCheckbox.checked = settings.definitionTranslationEnabled;
   }
-  updateDefinitionTranslationToggleState(settings.definitionBackfillEnabled);
+  if (saveDefinitionBackfillCheckbox) {
+    saveDefinitionBackfillCheckbox.checked = settings.saveDefinitionBackfill;
+  }
+  if (saveDefinitionTranslationCheckbox) {
+    saveDefinitionTranslationCheckbox.checked = settings.saveDefinitionTranslation;
+  }
+  updateDefinitionTranslationToggleState(settings.enabled, settings.definitionBackfillEnabled);
+  updateDefinitionTogglesState(settings.enabled);
+  updateSaveCheckboxStates(settings.enabled, settings.definitionBackfillEnabled, settings.definitionTranslationEnabled);
   providerSelect.value = settings.providerId || "gemini";
   currentMode = settings.mode;
   updateModeUi(settings.mode);
@@ -402,6 +432,22 @@ const initialize = () => {
       await refresh();
     })();
   });
+
+  if (saveDefinitionBackfillCheckbox) {
+    saveDefinitionBackfillCheckbox.addEventListener("change", () => {
+      void (async () => {
+        await updateTranslationSettings({ saveDefinitionBackfill: saveDefinitionBackfillCheckbox.checked });
+      })();
+    });
+  }
+
+  if (saveDefinitionTranslationCheckbox) {
+    saveDefinitionTranslationCheckbox.addEventListener("change", () => {
+      void (async () => {
+        await updateTranslationSettings({ saveDefinitionTranslation: saveDefinitionTranslationCheckbox.checked });
+      })();
+    });
+  }
 
   modeSingleButton.addEventListener("click", () => {
     void (async () => {

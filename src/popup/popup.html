@@ -15,6 +15,23 @@
           <span class="wordmark-direction-arrow" aria-hidden="true">→</span>
           <button type="button" class="wordmark-direction-button" data-direction="ZH->EN">ZH</button>
         </div>
+        <div class="wordmark-language-filter" id="language-filter" hidden>
+          <button
+            type="button"
+            id="language-toggle"
+            class="wordmark-language-toggle"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+          >
+            <span class="wordmark-language-label">ALL</span>
+          </button>
+          <div id="language-list" class="wordmark-language-list" role="listbox" hidden>
+            <button type="button" class="wordmark-language-option" data-language="all" role="option" aria-selected="true">ALL</button>
+            <button type="button" class="wordmark-language-option" data-language="en" role="option">EN</button>
+            <button type="button" class="wordmark-language-option" data-language="zh" role="option">ZH</button>
+            <button type="button" class="wordmark-language-option" data-language="ja" role="option">JA</button>
+          </div>
+        </div>
         <div class="wordmark-header-right">
           <button
             id="settings-button"

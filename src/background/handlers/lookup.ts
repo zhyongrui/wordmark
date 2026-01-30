@@ -9,7 +9,12 @@ export type LookupRequestPayload = {
 };
 
 export type LookupResponse =
-  | { ok: true; entry: Awaited<ReturnType<typeof recordLookup>> & { definitionSource: DefinitionSource } }
+  | {
+      ok: true;
+      entry: Awaited<ReturnType<typeof recordLookup>> & {
+        definitionSource: DefinitionSource;
+      };
+    }
   | { ok: false; error: "invalid-selection" | "invalid-payload" };
 
 export const handleLookupRequest = async (payload: LookupRequestPayload): Promise<LookupResponse> => {
@@ -25,15 +30,17 @@ export const handleLookupRequest = async (payload: LookupRequestPayload): Promis
   const result = shapeLookupResult({
     normalizedWord: selection.normalizedWord,
     displayWord: payload.selectedText,
-    dictionaryEntry: null,
     ttsAvailable: Boolean(payload.ttsAvailable)
   });
 
   const storedEntry = await recordLookup(result);
+  const hasLocalDefinition =
+    (selection.language === "en" && typeof storedEntry.definitionEn === "string" && storedEntry.definitionEn.trim()) ||
+    (selection.language === "zh" && typeof storedEntry.definitionZh === "string" && storedEntry.definitionZh.trim()) ||
+    (selection.language === "ja" && typeof storedEntry.definitionJa === "string" && storedEntry.definitionJa.trim());
   const entry = {
     ...storedEntry,
-    definition: result.definition,
-    definitionSource: "local" as const,
+    definitionSource: (hasLocalDefinition ? "local" : "none") as DefinitionSource,
     pronunciationAvailable: result.pronunciationAvailable
   };
   return { ok: true, entry };

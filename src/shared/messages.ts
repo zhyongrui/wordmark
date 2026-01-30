@@ -18,7 +18,7 @@ export type Message<T = unknown> = {
   payload?: T;
 };
 
-export type DefinitionSource = "local" | "generated";
+export type DefinitionSource = "local" | "generated" | "none";
 
 export type DefinitionBackfillRequestPayload = {
   word: string;
