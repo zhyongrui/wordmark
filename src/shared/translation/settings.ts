@@ -22,6 +22,7 @@ export type TranslationSettings = {
   saveDefinitionBackfill: boolean;
   saveDefinitionTranslation: boolean;
   saveQueriedWords: boolean;
+  highlightQueriedWords: boolean;
 };
 
 const defaultSettings: TranslationSettings = {
@@ -35,7 +36,8 @@ const defaultSettings: TranslationSettings = {
   definitionTranslationEnabled: false,
   saveDefinitionBackfill: true,
   saveDefinitionTranslation: true,
-  saveQueriedWords: true
+  saveQueriedWords: true,
+  highlightQueriedWords: true
 };
 
 type StorageArea = {
@@ -143,6 +145,9 @@ const parseSettings = (input: unknown): TranslationSettings => {
   const saveQueriedWordsRaw = (input as { saveQueriedWords?: unknown }).saveQueriedWords;
   const saveQueriedWords =
     typeof saveQueriedWordsRaw === "boolean" ? saveQueriedWordsRaw : defaultSettings.saveQueriedWords;
+  const highlightQueriedWordsRaw = (input as { highlightQueriedWords?: unknown }).highlightQueriedWords;
+  const highlightQueriedWords =
+    typeof highlightQueriedWordsRaw === "boolean" ? highlightQueriedWordsRaw : defaultSettings.highlightQueriedWords;
 
   return {
     enabled,
@@ -155,7 +160,8 @@ const parseSettings = (input: unknown): TranslationSettings => {
     definitionTranslationEnabled,
     saveDefinitionBackfill,
     saveDefinitionTranslation,
-    saveQueriedWords
+    saveQueriedWords,
+    highlightQueriedWords
   };
 };
 
@@ -210,7 +216,9 @@ export const updateTranslationSettings = async (
         ? update.saveDefinitionTranslation
         : current.saveDefinitionTranslation,
     saveQueriedWords:
-      typeof update.saveQueriedWords === "boolean" ? update.saveQueriedWords : current.saveQueriedWords
+      typeof update.saveQueriedWords === "boolean" ? update.saveQueriedWords : current.saveQueriedWords,
+    highlightQueriedWords:
+      typeof update.highlightQueriedWords === "boolean" ? update.highlightQueriedWords : current.highlightQueriedWords
   };
 
   await writeTranslationSettings(next);

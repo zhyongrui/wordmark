@@ -3,10 +3,13 @@ import type { WordLanguage } from "../shared/word/normalize";
 type OverlayContent = {
   word: string;
   definition: string | null;
+  suppressFallback?: boolean;
   pronunciationAvailable: boolean;
   status?: string;
   onPronounce?: () => void;
   anchorRect?: AnchorRect | null;
+  saveEnabled?: boolean;
+  highlightEnabled?: boolean;
 };
 
 export type AnchorRect = {
@@ -35,6 +38,11 @@ let selectionCapturePending = false;
 let overlayHideListener: (() => void) | null = null;
 let selectionTrackingInstalled = false;
 let positionAttemptId = 0;
+let currentWordSaveEnabled = true;
+let currentWordHighlightEnabled = true;
+let currentWord: string | null = null;
+let onWordSaveToggle: ((enabled: boolean) => void) | null = null;
+let onWordHighlightToggle: ((enabled: boolean) => void) | null = null;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -43,6 +51,43 @@ export const bumpAutoCloseIgnore = (ms = 200) => {
 };
 
 export const shouldIgnoreAutoClose = () => Date.now() < ignoreAutoCloseUntil;
+
+const updateToggleButtonState = (button: HTMLButtonElement, isActive: boolean) => {
+  if (isActive) {
+    button.classList.add("is-active");
+  } else {
+    button.classList.remove("is-active");
+  }
+};
+
+export const setWordSaveEnabled = (enabled: boolean) => {
+  currentWordSaveEnabled = enabled;
+  const overlay = getExistingOverlay();
+  if (overlay) {
+    updateToggleButtonState(overlay.saveToggle, enabled);
+  }
+  onWordSaveToggle?.(enabled);
+};
+
+export const setWordHighlightEnabled = (enabled: boolean) => {
+  currentWordHighlightEnabled = enabled;
+  const overlay = getExistingOverlay();
+  if (overlay) {
+    updateToggleButtonState(overlay.highlightToggle, enabled);
+  }
+  onWordHighlightToggle?.(enabled);
+};
+
+export const getWordSaveEnabled = () => currentWordSaveEnabled;
+export const getWordHighlightEnabled = () => currentWordHighlightEnabled;
+
+export const setWordSaveToggleHandler = (handler: ((enabled: boolean) => void) | null) => {
+  onWordSaveToggle = handler;
+};
+
+export const setWordHighlightToggleHandler = (handler: ((enabled: boolean) => void) | null) => {
+  onWordHighlightToggle = handler;
+};
 
 const ensurePointerTracking = () => {
   if (pointerTrackingInstalled) {
@@ -394,6 +439,19 @@ const ensureStyles = () => {
 };
 
 const PRONOUNCE_LABEL = "Play pronunciation";
+const SAVE_LABEL = "Save to word list";
+
+const ensureSaveToggleIcon = (button: HTMLButtonElement) => {
+  if (button.querySelector(".wordmark-toggle-icon")) {
+    return;
+  }
+
+  button.textContent = "";
+  const icon = document.createElement("span");
+  icon.className = "wordmark-toggle-icon";
+  icon.textContent = "📋";
+  button.appendChild(icon);
+};
 
 const createSpeakerIcon = () => {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -423,6 +481,81 @@ const ensurePronounceButtonIcon = (button: HTMLButtonElement) => {
   button.appendChild(createSpeakerIcon());
 };
 
+const ensureHighlightToggleIcon = (button: HTMLButtonElement) => {
+  if (button.querySelector(".wordmark-icon--highlight")) {
+    return;
+  }
+
+  button.textContent = "";
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("wordmark-icon", "wordmark-icon--highlight");
+
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+  gradient.setAttribute("id", "wm-highlight-grad");
+  gradient.setAttribute("x1", "0");
+  gradient.setAttribute("y1", "0");
+  gradient.setAttribute("x2", "1");
+  gradient.setAttribute("y2", "1");
+
+  const stopStart = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+  stopStart.setAttribute("offset", "0%");
+  stopStart.setAttribute("stop-color", "#f7c84b");
+
+  const stopEnd = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+  stopEnd.setAttribute("offset", "100%");
+  stopEnd.setAttribute("stop-color", "#f0791a");
+
+  gradient.appendChild(stopStart);
+  gradient.appendChild(stopEnd);
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
+
+  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  group.setAttribute(
+    "transform",
+    "translate(12 12) rotate(-35) scale(1.3) translate(-12 -12)"
+  );
+
+  const nib = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+  nib.setAttribute("points", "3,12 5,10 7,10 6,14 3,14");
+  nib.setAttribute("fill", "url(#wm-highlight-grad)");
+
+  const neck = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  neck.setAttribute("x", "7");
+  neck.setAttribute("y", "10");
+  neck.setAttribute("width", "2");
+  neck.setAttribute("height", "4");
+  neck.setAttribute("rx", "0.6");
+  neck.setAttribute("fill", "url(#wm-highlight-grad)");
+
+  const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  body.setAttribute(
+    "d",
+    "M10 9.2h7.6a1.6 1.6 0 0 1 1.6 1.6v3.8a1.6 1.6 0 0 1-1.6 1.6H10a1.6 1.6 0 0 1-1.6-1.6v-3.8a1.6 1.6 0 0 1 1.6-1.6zM12 10.7a0.9 0.9 0 0 0-0.9 0.9v2.2a0.9 0.9 0 0 0 0.9 0.9h2.3a0.9 0.9 0 0 0 0.9-0.9v-2.2a0.9 0.9 0 0 0-0.9-0.9H12z"
+  );
+  body.setAttribute("fill", "url(#wm-highlight-grad)");
+  body.setAttribute("fill-rule", "evenodd");
+
+  const cap = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  cap.setAttribute("x", "18");
+  cap.setAttribute("y", "9");
+  cap.setAttribute("width", "4");
+  cap.setAttribute("height", "6");
+  cap.setAttribute("rx", "1.8");
+  cap.setAttribute("fill", "url(#wm-highlight-grad)");
+
+  group.appendChild(nib);
+  group.appendChild(neck);
+  group.appendChild(body);
+  group.appendChild(cap);
+  svg.appendChild(group);
+  button.appendChild(svg);
+};
+
 const createOverlay = () => {
   const root = document.createElement("section");
   root.id = OVERLAY_ID;
@@ -437,6 +570,29 @@ const createOverlay = () => {
   const title = document.createElement("div");
   title.textContent = "WordMark";
 
+  const headerControls = document.createElement("div");
+  headerControls.className = "wordmark-header-controls";
+
+  const saveToggle = document.createElement("button");
+  saveToggle.className = "wordmark-toggle wordmark-toggle--save";
+  saveToggle.type = "button";
+  saveToggle.title = SAVE_LABEL;
+  saveToggle.setAttribute("aria-label", "Toggle save to word list");
+  ensureSaveToggleIcon(saveToggle);
+  saveToggle.addEventListener("click", () => {
+    setWordSaveEnabled(!currentWordSaveEnabled);
+  });
+
+  const highlightToggle = document.createElement("button");
+  highlightToggle.className = "wordmark-toggle wordmark-toggle--highlight";
+  highlightToggle.type = "button";
+  highlightToggle.title = "Highlight on page";
+  highlightToggle.setAttribute("aria-label", "Toggle highlight on page");
+  ensureHighlightToggleIcon(highlightToggle);
+  highlightToggle.addEventListener("click", () => {
+    setWordHighlightEnabled(!currentWordHighlightEnabled);
+  });
+
   const close = document.createElement("button");
   close.className = "wordmark-close";
   close.type = "button";
@@ -445,8 +601,12 @@ const createOverlay = () => {
     hideLookupOverlay();
   });
 
+  headerControls.appendChild(saveToggle);
+  headerControls.appendChild(highlightToggle);
+  headerControls.appendChild(close);
+
   header.appendChild(title);
-  header.appendChild(close);
+  header.appendChild(headerControls);
 
   const word = document.createElement("div");
   word.className = "wordmark-word";
@@ -513,6 +673,8 @@ const createOverlay = () => {
     word,
     definition,
     pronounce,
+    saveToggle,
+    highlightToggle,
     translation,
     translationTitle,
     translationWordLabel,
@@ -540,6 +702,54 @@ const getExistingOverlay = (): OverlayElements | null => {
   }
 
   const actions = existing.querySelector(".wordmark-actions") as HTMLDivElement | null;
+
+  const saveToggleButtons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-toggle--save");
+  const saveToggle = saveToggleButtons[0] ?? document.createElement("button");
+  saveToggleButtons.forEach((button, index) => {
+    if (index > 0) {
+      button.remove();
+    }
+  });
+  saveToggle.classList.add("wordmark-toggle", "wordmark-toggle--save");
+  saveToggle.type = "button";
+  saveToggle.title = SAVE_LABEL;
+  saveToggle.setAttribute("aria-label", "Toggle save to word list");
+  ensureSaveToggleIcon(saveToggle);
+
+  const highlightToggleButtons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-toggle--highlight");
+  const highlightToggle = highlightToggleButtons[0] ?? document.createElement("button");
+  highlightToggleButtons.forEach((button, index) => {
+    if (index > 0) {
+      button.remove();
+    }
+  });
+  highlightToggle.classList.add("wordmark-toggle", "wordmark-toggle--highlight");
+  highlightToggle.type = "button";
+  highlightToggle.title = "Highlight on page";
+  highlightToggle.setAttribute("aria-label", "Toggle highlight on page");
+  ensureHighlightToggleIcon(highlightToggle);
+
+  // Ensure header controls container exists
+  const header = existing.querySelector(".wordmark-header") as HTMLDivElement | null;
+  if (header) {
+    let headerControls = header.querySelector(".wordmark-header-controls") as HTMLDivElement | null;
+    if (!headerControls) {
+      headerControls = document.createElement("div");
+      headerControls.className = "wordmark-header-controls";
+      header.appendChild(headerControls);
+    }
+    if (!saveToggleButtons[0]) {
+      headerControls.insertBefore(saveToggle, headerControls.firstChild);
+    }
+    if (!highlightToggleButtons[0]) {
+      const closeButton = headerControls.querySelector(".wordmark-close");
+      if (closeButton) {
+        headerControls.insertBefore(highlightToggle, closeButton);
+      } else {
+        headerControls.appendChild(highlightToggle);
+      }
+    }
+  }
 
   const pronounceButtons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-button--pronounce");
   const pronounce = pronounceButtons[0] ?? document.createElement("button");
@@ -620,6 +830,8 @@ const getExistingOverlay = (): OverlayElements | null => {
     word: existing.querySelector(".wordmark-word") as HTMLDivElement,
     definition: existing.querySelector(".wordmark-definition") as HTMLDivElement,
     pronounce,
+    saveToggle,
+    highlightToggle,
     translation,
     translationTitle,
     translationWordLabel,
@@ -677,14 +889,25 @@ const setDefinitionLabels = (
   overlay.translationDefinitionLabel.textContent = `Definition (${getLanguageLabel(effectiveTargetLang)})`;
 };
 
-export const resetTranslationUi = (englishDefinition: string | null, sourceLang: WordLanguage = "en") => {
+export const resetTranslationUi = (
+  englishDefinition: string | null,
+  sourceLang: WordLanguage = "en",
+  options: { suppressFallback?: boolean } = {}
+) => {
   const overlay = getExistingOverlay();
   if (!overlay) {
     return;
   }
 
-  overlay.definition.textContent =
-    sourceLang === "zh" ? "Translation unavailable." : normalizeEnglishDefinition(englishDefinition);
+  const suppressFallback = options.suppressFallback === true;
+  const trimmedDefinition =
+    typeof englishDefinition === "string" && englishDefinition.trim() ? englishDefinition.trim() : "";
+  if (suppressFallback && !trimmedDefinition) {
+    overlay.definition.textContent = "";
+  } else {
+    overlay.definition.textContent =
+      sourceLang === "zh" ? "Translation unavailable." : normalizeEnglishDefinition(englishDefinition);
+  }
   overlay.translation.hidden = true;
   overlay.translationWord.textContent = "";
   overlay.translationDefinitionLabel.style.display = "none";
@@ -1035,15 +1258,34 @@ export const overlayContainsTarget = (target: EventTarget | null) => {
   return overlay.root.contains(target as Node);
 };
 
-export const showLookupOverlay = (content: OverlayContent & { sourceLang?: WordLanguage }) => {
+export const showLookupOverlay = (
+  content: OverlayContent & { sourceLang?: WordLanguage; saveEnabled?: boolean; highlightEnabled?: boolean }
+) => {
   ensureStyles();
   ensurePointerTracking();
   bumpAutoCloseIgnore(250);
   const overlay = getOverlay();
   const sourceLang = content.sourceLang ?? "en";
+
+  // Store current word
+  currentWord = content.word;
+
+  // Initialize toggle states from global settings (or use provided values)
+  currentWordSaveEnabled = content.saveEnabled ?? true;
+  currentWordHighlightEnabled = content.highlightEnabled ?? true;
+  updateToggleButtonState(overlay.saveToggle, currentWordSaveEnabled);
+  updateToggleButtonState(overlay.highlightToggle, currentWordHighlightEnabled);
+
   overlay.word.textContent = content.word;
-  overlay.definition.textContent =
-    content.definition ?? (sourceLang === "zh" ? "Translation unavailable." : "Definition unavailable.");
+  const suppressFallback = content.suppressFallback === true;
+  const trimmedDefinition =
+    typeof content.definition === "string" && content.definition.trim() ? content.definition.trim() : "";
+  if (suppressFallback && !trimmedDefinition) {
+    overlay.definition.textContent = "";
+  } else {
+    overlay.definition.textContent =
+      content.definition ?? (sourceLang === "zh" ? "Translation unavailable." : "Definition unavailable.");
+  }
   overlay.status.textContent = content.status ?? "";
   overlay.pronounce.disabled = !content.pronunciationAvailable;
   overlay.pronounce.style.display = content.pronunciationAvailable ? "inline-flex" : "none";

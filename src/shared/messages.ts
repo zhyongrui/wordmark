@@ -3,6 +3,7 @@ export const MessageTypes = {
   LookupRequest: "lookup:request",
   ListWords: "words:list",
   DeleteWord: "words:delete",
+  AddWord: "words:add",
   GetHighlightPreference: "preferences:highlight:get",
   SetHighlightPreference: "preferences:highlight:set",
   TranslationRequest: "translation:request",

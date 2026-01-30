@@ -36,6 +36,61 @@
   color: #5a5144;
 }
 
+.wordmark-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wordmark-toggle {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  width: 20px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #9a8e7e;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.wordmark-toggle:hover {
+  background: #eedfcd;
+  opacity: 0.8;
+}
+
+.wordmark-toggle.is-active {
+  opacity: 1;
+  color: #2b241d;
+  background: #dcc7ad;
+}
+
+.wordmark-toggle svg {
+  display: block;
+}
+
+.wordmark-toggle-icon {
+  display: block;
+  line-height: 1;
+}
+
+.wordmark-toggle--save .wordmark-toggle-icon {
+  transform: translateX(0.5px);
+}
+
+.wordmark-toggle--highlight svg {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  transform: translateX(-1px);
+}
+
 .wordmark-close {
   border: none;
   background: transparent;

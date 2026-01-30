@@ -4,7 +4,7 @@ import {
 } from "./handlers/definition-backfill";
 import { handleLookupRequest, type LookupRequestPayload } from "./handlers/lookup";
 import { handleTranslationRequest, type TranslationRequestPayload } from "./handlers/translation";
-import { handleDeleteWord, handleListWords, type DeleteWordPayload } from "./handlers/words";
+import { handleDeleteWord, handleListWords, handleAddWord, type DeleteWordPayload, type AddWordPayload } from "./handlers/words";
 import {
   handleGetHighlightPreference,
   handleSetHighlightPreference,
@@ -121,6 +121,9 @@ const initializeBackground = () => {
           return true;
         case MessageTypes.DeleteWord:
           handleDeleteWord(payload as DeleteWordPayload).then(sendResponse);
+          return true;
+        case MessageTypes.AddWord:
+          handleAddWord(payload as AddWordPayload).then(sendResponse);
           return true;
         case MessageTypes.GetHighlightPreference:
           handleGetHighlightPreference().then(sendResponse);

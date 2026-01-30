@@ -3,6 +3,8 @@ import {
   bumpAutoCloseIgnore,
   captureSelectionRect,
   getCachedSelectionRect,
+  getWordSaveEnabled,
+  getWordHighlightEnabled,
   hideLookupOverlay,
   installSelectionRectTracking,
   isOverlayOpen,
@@ -211,12 +213,16 @@ const triggerLookup = async () => {
   lookupSessionId += 1;
   const sessionId = lookupSessionId;
   const localDefinition = getDefinitionForLanguage(entry, selectionLanguage);
+  const suppressFallback = !translationEnabled;
   ensureOverlayAutoClose();
   showLookupOverlay({
     word: entry.displayWord,
     definition: localDefinition,
     pronunciationAvailable: entry.pronunciationAvailable,
     sourceLang: selectionLanguage,
+    suppressFallback,
+    saveEnabled: settings.saveQueriedWords,
+    highlightEnabled: settings.highlightQueriedWords,
     anchorRect,
     onPronounce: () => {
       if (!playPronunciation(entry.displayWord)) {
@@ -376,7 +382,7 @@ const syncTranslationEnabledState = async () => {
   const lookup = latestLookup;
   if (!translationEnabled && lookup && lookup.sessionId === lookupSessionId && isOverlayOpen()) {
     const localDefinition = getDefinitionForLanguage(lookup, lookup.language);
-    resetTranslationUi(localDefinition, lookup.language);
+    resetTranslationUi(localDefinition, lookup.language, { suppressFallback: !translationEnabled });
   }
 };
 
