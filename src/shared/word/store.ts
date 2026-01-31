@@ -90,6 +90,12 @@ export const recordLookup = async (entry: Omit<WordEntry, "queryCount" | "lastQu
     existing && typeof existing.definitionZh === "string" && existing.definitionZh.trim() ? existing.definitionZh : null;
   const existingDefinitionJa =
     existing && typeof existing.definitionJa === "string" && existing.definitionJa.trim() ? existing.definitionJa : null;
+  const existingTranslatedDefinitionEn =
+    existing && typeof existing.translatedDefinitionEn === "string" && existing.translatedDefinitionEn.trim() ? existing.translatedDefinitionEn : null;
+  const existingTranslatedDefinitionZh =
+    existing && typeof existing.translatedDefinitionZh === "string" && existing.translatedDefinitionZh.trim() ? existing.translatedDefinitionZh : null;
+  const existingTranslatedDefinitionJa =
+    existing && typeof existing.translatedDefinitionJa === "string" && existing.translatedDefinitionJa.trim() ? existing.translatedDefinitionJa : null;
   const existingHighlightDisabled = existing?.highlightDisabled;
   const nextWordZh =
     typeof entry.wordZh === "string" && entry.wordZh.trim() ? entry.wordZh : existingWordZh;
@@ -103,6 +109,12 @@ export const recordLookup = async (entry: Omit<WordEntry, "queryCount" | "lastQu
     typeof entry.definitionZh === "string" && entry.definitionZh.trim() ? entry.definitionZh : existingDefinitionZh;
   const nextDefinitionJa =
     typeof entry.definitionJa === "string" && entry.definitionJa.trim() ? entry.definitionJa : existingDefinitionJa;
+  const nextTranslatedDefinitionEn =
+    typeof entry.translatedDefinitionEn === "string" && entry.translatedDefinitionEn.trim() ? entry.translatedDefinitionEn : existingTranslatedDefinitionEn;
+  const nextTranslatedDefinitionZh =
+    typeof entry.translatedDefinitionZh === "string" && entry.translatedDefinitionZh.trim() ? entry.translatedDefinitionZh : existingTranslatedDefinitionZh;
+  const nextTranslatedDefinitionJa =
+    typeof entry.translatedDefinitionJa === "string" && entry.translatedDefinitionJa.trim() ? entry.translatedDefinitionJa : existingTranslatedDefinitionJa;
   const nextEntry: WordEntry = {
     ...entry,
     queryCount: existing ? existing.queryCount + 1 : 1,
@@ -113,6 +125,9 @@ export const recordLookup = async (entry: Omit<WordEntry, "queryCount" | "lastQu
     definitionEn: nextDefinitionEn ?? undefined,
     definitionZh: nextDefinitionZh ?? undefined,
     definitionJa: nextDefinitionJa ?? undefined,
+    translatedDefinitionEn: nextTranslatedDefinitionEn ?? undefined,
+    translatedDefinitionZh: nextTranslatedDefinitionZh ?? undefined,
+    translatedDefinitionJa: nextTranslatedDefinitionJa ?? undefined,
     highlightDisabled: existingHighlightDisabled
   };
 
@@ -343,6 +358,117 @@ export const updateDefinitionJa = async (normalizedWord: string, definitionJa: s
       [normalized]: {
         ...existing,
         definitionJa: clamped
+      }
+    }
+  };
+
+  await writeStore(nextStore);
+};
+
+export const updateTranslatedDefinitionEn = async (normalizedWord: string, translatedDefinitionEn: string): Promise<void> => {
+  const normalized = typeof normalizedWord === "string" ? normalizedWord.trim() : "";
+  const raw = typeof translatedDefinitionEn === "string" ? translatedDefinitionEn : "";
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!normalized || !trimmed) {
+    return;
+  }
+
+  const clamped = trimmed.length > 500 ? trimmed.slice(0, 500).trim() : trimmed;
+  if (!clamped) {
+    return;
+  }
+
+  const store = await readStore();
+  const existing = store.wordsByKey[normalized];
+  if (!existing) {
+    return;
+  }
+
+  if (existing.translatedDefinitionEn === clamped) {
+    return;
+  }
+
+  const nextStore: StorageEnvelope = {
+    ...store,
+    wordsByKey: {
+      ...store.wordsByKey,
+      [normalized]: {
+        ...existing,
+        translatedDefinitionEn: clamped
+      }
+    }
+  };
+
+  await writeStore(nextStore);
+};
+
+export const updateTranslatedDefinitionZh = async (normalizedWord: string, translatedDefinitionZh: string): Promise<void> => {
+  const normalized = typeof normalizedWord === "string" ? normalizedWord.trim() : "";
+  const raw = typeof translatedDefinitionZh === "string" ? translatedDefinitionZh : "";
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!normalized || !trimmed) {
+    return;
+  }
+
+  const clamped = trimmed.length > 500 ? trimmed.slice(0, 500).trim() : trimmed;
+  if (!clamped) {
+    return;
+  }
+
+  const store = await readStore();
+  const existing = store.wordsByKey[normalized];
+  if (!existing) {
+    return;
+  }
+
+  if (existing.translatedDefinitionZh === clamped) {
+    return;
+  }
+
+  const nextStore: StorageEnvelope = {
+    ...store,
+    wordsByKey: {
+      ...store.wordsByKey,
+      [normalized]: {
+        ...existing,
+        translatedDefinitionZh: clamped
+      }
+    }
+  };
+
+  await writeStore(nextStore);
+};
+
+export const updateTranslatedDefinitionJa = async (normalizedWord: string, translatedDefinitionJa: string): Promise<void> => {
+  const normalized = typeof normalizedWord === "string" ? normalizedWord.trim() : "";
+  const raw = typeof translatedDefinitionJa === "string" ? translatedDefinitionJa : "";
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!normalized || !trimmed) {
+    return;
+  }
+
+  const clamped = trimmed.length > 500 ? trimmed.slice(0, 500).trim() : trimmed;
+  if (!clamped) {
+    return;
+  }
+
+  const store = await readStore();
+  const existing = store.wordsByKey[normalized];
+  if (!existing) {
+    return;
+  }
+
+  if (existing.translatedDefinitionJa === clamped) {
+    return;
+  }
+
+  const nextStore: StorageEnvelope = {
+    ...store,
+    wordsByKey: {
+      ...store.wordsByKey,
+      [normalized]: {
+        ...existing,
+        translatedDefinitionJa: clamped
       }
     }
   };

@@ -162,7 +162,17 @@ type ExistingTranslationData = {
 };
 
 const checkExistingTranslation = (
-  entry: { wordZh?: string; wordEn?: string; wordJa?: string; definitionEn?: string; definitionZh?: string; definitionJa?: string },
+  entry: {
+    wordZh?: string;
+    wordEn?: string;
+    wordJa?: string;
+    definitionEn?: string;
+    definitionZh?: string;
+    definitionJa?: string;
+    translatedDefinitionEn?: string;
+    translatedDefinitionZh?: string;
+    translatedDefinitionJa?: string;
+  },
   sourceLang: WordLanguage,
   targetLang?: TranslationTargetLang
 ): ExistingTranslationData => {
@@ -180,14 +190,14 @@ const checkExistingTranslation = (
     translation = entry.wordJa;
   }
 
-  // Check if we have the target language definition translation
+  // Check if we have the target language definition translation (translated definition, not same-language definition)
   let definitionTranslation: string | undefined;
-  if (targetLang === "zh" && entry.definitionZh) {
-    definitionTranslation = entry.definitionZh;
-  } else if (targetLang === "en" && entry.definitionEn) {
-    definitionTranslation = entry.definitionEn;
-  } else if (targetLang === "ja" && entry.definitionJa) {
-    definitionTranslation = entry.definitionJa;
+  if (targetLang === "zh" && entry.translatedDefinitionZh) {
+    definitionTranslation = entry.translatedDefinitionZh;
+  } else if (targetLang === "en" && entry.translatedDefinitionEn) {
+    definitionTranslation = entry.translatedDefinitionEn;
+  } else if (targetLang === "ja" && entry.translatedDefinitionJa) {
+    definitionTranslation = entry.translatedDefinitionJa;
   }
 
   // Separate flags for word translation and definition translation

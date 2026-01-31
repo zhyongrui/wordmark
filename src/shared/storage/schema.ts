@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export type WordEntry = {
   normalizedWord: string;
@@ -6,9 +6,14 @@ export type WordEntry = {
   wordZh?: string;
   wordJa?: string;
   wordEn?: string;
+  // Same-language definitions (source language definition of the word)
   definitionEn?: string;
   definitionZh?: string;
   definitionJa?: string;
+  // Translated definitions (translation of the definition from source to target language)
+  translatedDefinitionEn?: string;
+  translatedDefinitionZh?: string;
+  translatedDefinitionJa?: string;
   highlightDisabled?: boolean;
   queryCount: number;
   lastQueriedAt: string;

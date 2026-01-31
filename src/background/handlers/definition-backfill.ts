@@ -1,6 +1,7 @@
 import type { DefinitionBackfillRequestPayload, DefinitionBackfillResponse } from "../../shared/messages";
 import { normalizeSelection } from "../../shared/word/normalize";
 import { updateDefinitionEn, updateDefinitionZh, updateDefinitionJa } from "../../shared/word/store";
+import { updateTranslatedDefinitionEn, updateTranslatedDefinitionZh, updateTranslatedDefinitionJa } from "../../shared/word/store";
 import { geminiDefinitionProvider } from "../../shared/definition/providers/gemini";
 import { deepseekDefinitionProvider } from "../../shared/definition/providers/deepseek";
 import { moonshotDefinitionProvider } from "../../shared/definition/providers/moonshot";
@@ -231,24 +232,26 @@ export const handleDefinitionBackfillRequest = async (
       const saveTranslation = settings.saveDefinitionTranslation;
 
       try {
-        if (saveBackfill && response.definitionEn) {
-          await updateDefinitionEn(selection.normalizedWord, response.definitionEn);
-        }
-        if (saveBackfill && response.definitionZh) {
-          await updateDefinitionZh(selection.normalizedWord, response.definitionZh);
-        }
-        if (saveBackfill && response.definitionJa) {
-          await updateDefinitionJa(selection.normalizedWord, response.definitionJa);
+        // Save same-language definitions (source language definition)
+        if (saveBackfill) {
+          if (sourceLang === "en" && response.definitionEn) {
+            await updateDefinitionEn(selection.normalizedWord, response.definitionEn);
+          } else if (sourceLang === "zh" && response.definitionZh) {
+            await updateDefinitionZh(selection.normalizedWord, response.definitionZh);
+          } else if (sourceLang === "ja" && response.definitionJa) {
+            await updateDefinitionJa(selection.normalizedWord, response.definitionJa);
+          }
         }
 
-        // Save translated definitions if enabled
+        // Save translated definitions (translation of definition to target language)
+        // These are stored in separate fields to avoid conflict with same-language definitions
         if (saveTranslation && translatedDefinition) {
           if (targetLang === "en") {
-            await updateDefinitionEn(selection.normalizedWord, translatedDefinition);
+            await updateTranslatedDefinitionEn(selection.normalizedWord, translatedDefinition);
           } else if (targetLang === "zh") {
-            await updateDefinitionZh(selection.normalizedWord, translatedDefinition);
+            await updateTranslatedDefinitionZh(selection.normalizedWord, translatedDefinition);
           } else if (targetLang === "ja") {
-            await updateDefinitionJa(selection.normalizedWord, translatedDefinition);
+            await updateTranslatedDefinitionJa(selection.normalizedWord, translatedDefinition);
           }
         }
       } catch {
