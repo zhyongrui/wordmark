@@ -374,42 +374,62 @@ const triggerLookup = async () => {
     pronunciationAvailable: entry.pronunciationAvailable
   };
 
-  // Determine if we need to request translation
-  // Request if we don't have word translation OR definition translation (when enabled)
-  // Note: The translation API can return both word and definition translation.
-  // The updateWordXxx functions check if the value is the same before updating,
-  // we won't overwrite existing word translations when we just need definition translations.
-  const needsWordTranslation = !hasExistingTranslation.hasWordTranslation;
-  const needsDefinitionTranslation =
-    definitionTranslationEnabled && !hasExistingTranslation.hasDefinitionTranslation;
-  const needsTranslation = needsWordTranslation || needsDefinitionTranslation;
+  // Separate API calls for different data types to avoid redundant requests
 
-  // Only request translation if we need data
-  if (translationEnabled && directionInfo && needsTranslation) {
-    const translationPromise = requestTranslation(
-      sessionId,
-      entry.displayWord,
-      localDefinition,
-      selectionLanguage,
-      directionInfo.targetLang
-    );
-    void translationPromise.then(() => {
-      // Only request definition backfill if we don't have a definition
-      if (
-        definitionBackfillEnabled &&
-        !hasExistingDefinition &&
-        (selectionLanguage === "en" || selectionLanguage === "zh" || selectionLanguage === "ja")
-      ) {
-        void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
+  // 1. Word Translation API: Get wordZh/wordEn/wordJa
+  // Only call if we don't have word translation
+  const needsWordTranslation = !hasExistingTranslation.hasWordTranslation;
+
+  // 2. Same-Language Definition API: Get definitionEn/definitionZh/definitionJa
+  // Only call if we don't have a definition AND backfill is enabled
+  const needsSameLanguageDefinition =
+    definitionBackfillEnabled &&
+    !hasExistingDefinition &&
+    (selectionLanguage === "en" || selectionLanguage === "zh" || selectionLanguage === "ja");
+
+  // 3. Definition Translation API: Translate definition from source to target language
+  // Only call if we have a definition AND definition translation is enabled AND we don't have definition translation
+  const needsDefinitionTranslation =
+    definitionTranslationEnabled &&
+    hasExistingDefinition &&  // Need source definition to translate
+    !hasExistingTranslation.hasDefinitionTranslation;
+
+  // Execute API calls based on what we need
+  if (translationEnabled && directionInfo) {
+    // Call word translation API if needed
+    if (needsWordTranslation) {
+      void requestWordTranslation(
+        sessionId,
+        entry.displayWord,
+        selectionLanguage,
+        directionInfo.targetLang
+      );
+    }
+
+    // Call definition backfill API if needed (same-language definition)
+    if (needsSameLanguageDefinition) {
+      void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
+    }
+
+    // Call definition translation API if needed (translate definition to target language)
+    if (needsDefinitionTranslation) {
+      const sourceDefinition = localDefinition ?? getDefinitionForLanguage(entry, selectionLanguage);
+      if (sourceDefinition) {
+        void requestDefinitionTranslation(
+          sessionId,
+          entry.displayWord,
+          sourceDefinition,
+          selectionLanguage,
+          directionInfo.targetLang
+        );
       }
-    });
+    }
   } else if (
     definitionBackfillEnabled &&
     !hasExistingDefinition &&
-    translationEnabled &&
     (selectionLanguage === "en" || selectionLanguage === "zh" || selectionLanguage === "ja")
   ) {
-    // We have translation but no definition, request definition backfill
+    // Translation disabled but definition backfill enabled
     void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
   }
 };
@@ -484,6 +504,150 @@ const requestTranslation = async (
   showTranslationError(response.message ?? "Translation unavailable.", language, {
     definitionAvailable,
     preserveDefinitionArea
+  });
+};
+
+// Request word translation only (no definition translation)
+const requestWordTranslation = async (
+  sessionId: number,
+  word: string,
+  language: WordLanguage,
+  targetLang: TranslationTargetLang
+) => {
+  if (sessionId !== lookupSessionId) {
+    return;
+  }
+  if (!translationEnabled) {
+    return;
+  }
+
+  bumpAutoCloseIgnore(250);
+
+  // Show loading for word translation only
+  showTranslationLoading(language, { definitionAvailable: false });
+
+  const response = await sendMessage<TranslationResponse>({
+    type: MessageTypes.TranslationRequest,
+    payload: {
+      word,
+      definition: null,  // Don't request definition translation
+      sourceLang: language,
+      targetLang
+    }
+  });
+
+  if (sessionId !== lookupSessionId) {
+    return;
+  }
+  if (!translationEnabled) {
+    return;
+  }
+
+  if (!response) {
+    showTranslationError("Translation unavailable. Reload the extension and try again.", language, {
+      definitionAvailable: false,
+      preserveDefinitionArea: true
+    });
+    return;
+  }
+
+  if (response.ok) {
+    showTranslationResult(
+      {
+        translatedWord: response.translatedWord,
+        translatedDefinition: null  // No definition translation
+      },
+      language,
+      { definitionAvailable: false, preserveDefinitionArea: true }
+    );
+    return;
+  }
+
+  if (response.error === "not_configured") {
+    showTranslationError("Translation not configured. Set an API key in Options.", language, {
+      definitionAvailable: false,
+      preserveDefinitionArea: true
+    });
+    return;
+  }
+
+  showTranslationError(response.message ?? "Translation unavailable.", language, {
+    definitionAvailable: false,
+    preserveDefinitionArea: true
+  });
+};
+
+// Request definition translation only (requires source definition)
+const requestDefinitionTranslation = async (
+  sessionId: number,
+  word: string,
+  sourceDefinition: string,
+  language: WordLanguage,
+  targetLang: TranslationTargetLang
+) => {
+  if (sessionId !== lookupSessionId) {
+    return;
+  }
+  if (!translationEnabled || !definitionTranslationEnabled) {
+    return;
+  }
+
+  bumpAutoCloseIgnore(250);
+
+  // Show loading for definition translation
+  showTranslationLoading(language, {
+    definitionAvailable: true,
+    preserveDefinitionArea: false
+  });
+
+  const response = await sendMessage<TranslationResponse>({
+    type: MessageTypes.TranslationRequest,
+    payload: {
+      word,
+      definition: sourceDefinition,  // Request definition translation
+      sourceLang: language,
+      targetLang
+    }
+  });
+
+  if (sessionId !== lookupSessionId) {
+    return;
+  }
+  if (!translationEnabled) {
+    return;
+  }
+
+  if (!response) {
+    showTranslationError("Translation unavailable. Reload the extension and try again.", language, {
+      definitionAvailable: true,
+      preserveDefinitionArea: false
+    });
+    return;
+  }
+
+  if (response.ok) {
+    showTranslationResult(
+      {
+        translatedWord: response.translatedWord,  // May be null, that's ok
+        translatedDefinition: response.translatedDefinition ?? null
+      },
+      language,
+      { definitionAvailable: true, preserveDefinitionArea: false }
+    );
+    return;
+  }
+
+  if (response.error === "not_configured") {
+    showTranslationError("Translation not configured. Set an API key in Options.", language, {
+      definitionAvailable: true,
+      preserveDefinitionArea: false
+    });
+    return;
+  }
+
+  showTranslationError(response.message ?? "Translation unavailable.", language, {
+    definitionAvailable: true,
+    preserveDefinitionArea: false
   });
 };
 
