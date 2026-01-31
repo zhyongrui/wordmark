@@ -155,7 +155,8 @@ const getDefinitionForLanguage = (
 };
 
 type ExistingTranslationData = {
-  hasTranslation: boolean;
+  hasWordTranslation: boolean;
+  hasDefinitionTranslation: boolean;
   translation?: string;
   definitionTranslation?: string;
 };
@@ -166,10 +167,10 @@ const checkExistingTranslation = (
   targetLang?: TranslationTargetLang
 ): ExistingTranslationData => {
   if (!targetLang) {
-    return { hasTranslation: false };
+    return { hasWordTranslation: false, hasDefinitionTranslation: false };
   }
 
-  // Check if we have the target language translation
+  // Check if we have the target language word translation
   let translation: string | undefined;
   if (targetLang === "zh" && entry.wordZh) {
     translation = entry.wordZh;
@@ -179,7 +180,7 @@ const checkExistingTranslation = (
     translation = entry.wordJa;
   }
 
-  // Check if we have the target language definition
+  // Check if we have the target language definition translation
   let definitionTranslation: string | undefined;
   if (targetLang === "zh" && entry.definitionZh) {
     definitionTranslation = entry.definitionZh;
@@ -189,10 +190,11 @@ const checkExistingTranslation = (
     definitionTranslation = entry.definitionJa;
   }
 
-  // If we have either translation or definition translation, consider it as existing data
-  const hasTranslation = Boolean(translation || definitionTranslation);
+  // Separate flags for word translation and definition translation
+  const hasWordTranslation = Boolean(translation);
+  const hasDefinitionTranslation = Boolean(definitionTranslation);
 
-  return { hasTranslation, translation, definitionTranslation };
+  return { hasWordTranslation, hasDefinitionTranslation, translation, definitionTranslation };
 };
 
 const sendMessage = async <T>(message: unknown): Promise<T | null> => {
@@ -372,8 +374,17 @@ const triggerLookup = async () => {
     pronunciationAvailable: entry.pronunciationAvailable
   };
 
-  // Only request translation if we don't have cached data
-  if (translationEnabled && directionInfo && !hasExistingTranslation.hasTranslation) {
+  // Determine if we need to request translation
+  // Request if:
+  // 1. We don't have word translation, OR
+  // 2. Definition translation is enabled but we don't have definition translation
+  const needsWordTranslation = !hasExistingTranslation.hasWordTranslation;
+  const needsDefinitionTranslation =
+    definitionTranslationEnabled && !hasExistingTranslation.hasDefinitionTranslation;
+  const needsTranslation = needsWordTranslation || needsDefinitionTranslation;
+
+  // Only request translation if we need data
+  if (translationEnabled && directionInfo && needsTranslation) {
     const translationPromise = requestTranslation(
       sessionId,
       entry.displayWord,
