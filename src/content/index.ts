@@ -257,7 +257,8 @@ const triggerLookup = async () => {
   const entry = response.entry;
   lookupSessionId += 1;
   const sessionId = lookupSessionId;
-  const localDefinition = getDefinitionForLanguage(entry, selectionLanguage);
+  // When translation is disabled, don't show historical translations from previous lookups
+  const localDefinition = translationEnabled ? getDefinitionForLanguage(entry, selectionLanguage) : null;
   const suppressFallback = !translationEnabled;
   currentLookupSaveOverride = null;
   currentLookupHighlightOverride = null;
