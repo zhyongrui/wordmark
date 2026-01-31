@@ -607,7 +607,8 @@ const requestDefinitionTranslation = async (
   // Show loading for definition translation
   showTranslationLoading(language, {
     definitionAvailable: true,
-    preserveDefinitionArea: false
+    preserveDefinitionArea: true,
+    definitionText: sourceDefinition
   });
 
   const response = await sendMessage<TranslationResponse>({
@@ -630,7 +631,7 @@ const requestDefinitionTranslation = async (
   if (!response) {
     showTranslationError("Translation unavailable. Reload the extension and try again.", language, {
       definitionAvailable: true,
-      preserveDefinitionArea: false
+      preserveDefinitionArea: true
     });
     return;
   }
@@ -642,7 +643,7 @@ const requestDefinitionTranslation = async (
         translatedDefinition: response.translatedDefinition ?? null
       },
       language,
-      { definitionAvailable: true, preserveDefinitionArea: false }
+      { definitionAvailable: true, preserveDefinitionArea: true }
     );
     return;
   }
@@ -650,14 +651,14 @@ const requestDefinitionTranslation = async (
   if (response.error === "not_configured") {
     showTranslationError("Translation not configured. Set an API key in Options.", language, {
       definitionAvailable: true,
-      preserveDefinitionArea: false
+      preserveDefinitionArea: true
     });
     return;
   }
 
   showTranslationError(response.message ?? "Translation unavailable.", language, {
     definitionAvailable: true,
-    preserveDefinitionArea: false
+    preserveDefinitionArea: true
   });
 };
 

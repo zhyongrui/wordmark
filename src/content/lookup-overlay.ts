@@ -968,12 +968,14 @@ export const resetTranslationUi = (
 
 export const showTranslationLoading = (
   sourceLang: WordLanguage = "en",
-  options: { definitionAvailable?: boolean } = {}
+  options: { definitionAvailable?: boolean; preserveDefinitionArea?: boolean; definitionText?: string | null } = {}
 ) => {
   const overlay = getExistingOverlay();
   if (!overlay) {
     return;
   }
+
+  const preserveDefinitionArea = options.preserveDefinitionArea === true;
 
   if (sourceLang === "zh") {
     overlay.translation.hidden = true;
@@ -997,19 +999,27 @@ export const showTranslationLoading = (
     return;
   }
 
-  const englishDefinitionText = normalizeEnglishDefinition(overlay.definition.textContent);
+  const definitionText =
+    typeof options.definitionText === "string"
+      ? options.definitionText
+      : preserveDefinitionArea
+        ? overlay.translationWord.textContent
+        : overlay.definition.textContent;
+  const englishDefinitionText = normalizeEnglishDefinition(definitionText);
 
   overlay.translation.hidden = false;
   setDefinitionLabels(overlay, sourceLang);
   overlay.translationWord.textContent = englishDefinitionText;
 
-  overlay.definition.textContent = "Translating…";
+  if (!preserveDefinitionArea) {
+    overlay.definition.textContent = "Translating…";
+  }
 
   const showDefinitionTranslation = englishDefinitionText !== "Definition unavailable.";
   overlay.translationDefinitionLabel.style.display = showDefinitionTranslation ? "block" : "none";
   overlay.translationDefinition.style.display = showDefinitionTranslation ? "block" : "none";
   overlay.translationDefinition.textContent = "";
-  overlay.translationStatus.textContent = "";
+  overlay.translationStatus.textContent = preserveDefinitionArea ? "Translating…" : "";
 };
 
 export const showGeneratedDefinitionLoading = (sourceLang: WordLanguage = "en") => {
@@ -1113,7 +1123,9 @@ export const showTranslationResult = (
     }
   });
 
-  overlay.definition.textContent = model.topText;
+  if (!options.preserveDefinitionArea) {
+    overlay.definition.textContent = model.topText;
+  }
   overlay.translationWordLabel.textContent = "Definition (EN)";
   overlay.translationWord.textContent = model.englishDefinitionText;
 
@@ -1168,11 +1180,14 @@ export const showTranslationError = (
   overlay.translationWordLabel.textContent = "Definition (EN)";
   overlay.translationWord.textContent = englishDefinitionText;
 
-  overlay.definition.textContent = includeRetryHint ? `${trimmed} Press the shortcut again to retry.` : trimmed;
+  const errorText = includeRetryHint ? `${trimmed} Press the shortcut again to retry.` : trimmed;
+  if (!options.preserveDefinitionArea) {
+    overlay.definition.textContent = errorText;
+  }
   overlay.translationDefinitionLabel.style.display = "none";
   overlay.translationDefinition.style.display = "none";
   overlay.translationDefinition.textContent = "";
-  overlay.translationStatus.textContent = "";
+  overlay.translationStatus.textContent = options.preserveDefinitionArea ? errorText : "";
 };
 
 export const showGeneratedDefinitionResult = (
