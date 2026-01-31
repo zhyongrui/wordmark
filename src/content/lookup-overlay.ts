@@ -10,6 +10,8 @@ type OverlayContent = {
   anchorRect?: AnchorRect | null;
   saveEnabled?: boolean;
   highlightEnabled?: boolean;
+  initialTranslation?: string;
+  initialDefinitionTranslation?: string;
 };
 
 export type AnchorRect = {
@@ -1336,12 +1338,45 @@ export const showLookupOverlay = (
   overlay.pronounce.disabled = !content.pronunciationAvailable;
   overlay.pronounce.style.display = content.pronunciationAvailable ? "inline-flex" : "none";
   overlay.pronounce.onclick = content.onPronounce ?? null;
-  overlay.translation.hidden = true;
-  overlay.translationTitle.textContent = "English definition";
-  overlay.translationWordLabel.textContent = "Definition (EN)";
-  overlay.translationWord.textContent = "";
-  overlay.translationDefinition.textContent = "";
-  overlay.translationStatus.textContent = "";
+
+  // Handle initial cached translation data
+  const hasInitialTranslation = content.initialTranslation || content.initialDefinitionTranslation;
+  if (hasInitialTranslation) {
+    // Display cached translation data
+    overlay.translation.hidden = false;
+    setDefinitionLabels(overlay, sourceLang, undefined);
+
+    // Show source definition if available
+    const sourceDefinition = normalizeEnglishDefinition(trimmedDefinition || overlay.definition.textContent);
+    overlay.translationWord.textContent = sourceDefinition;
+    overlay.translationWordLabel.textContent = `Definition (${sourceLang.toUpperCase()})`;
+
+    // Show translated word
+    if (content.initialTranslation) {
+      overlay.definition.textContent = content.initialTranslation;
+    }
+
+    // Show definition translation if available
+    if (content.initialDefinitionTranslation) {
+      overlay.translationDefinitionLabel.style.display = "block";
+      overlay.translationDefinition.style.display = "block";
+      overlay.translationDefinition.textContent = content.initialDefinitionTranslation;
+    } else {
+      overlay.translationDefinitionLabel.style.display = "none";
+      overlay.translationDefinition.style.display = "none";
+      overlay.translationDefinition.textContent = "";
+    }
+
+    overlay.translationStatus.textContent = "";
+  } else {
+    overlay.translation.hidden = true;
+    overlay.translationTitle.textContent = "English definition";
+    overlay.translationWordLabel.textContent = "Definition (EN)";
+    overlay.translationWord.textContent = "";
+    overlay.translationDefinition.textContent = "";
+    overlay.translationStatus.textContent = "";
+  }
+
   overlay.root.hidden = false;
   void positionOverlay(overlay.root, content.anchorRect);
 };

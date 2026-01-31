@@ -154,6 +154,47 @@ const getDefinitionForLanguage = (
   return null;
 };
 
+type ExistingTranslationData = {
+  hasTranslation: boolean;
+  translation?: string;
+  definitionTranslation?: string;
+};
+
+const checkExistingTranslation = (
+  entry: { wordZh?: string; wordEn?: string; wordJa?: string; definitionEn?: string; definitionZh?: string; definitionJa?: string },
+  sourceLang: WordLanguage,
+  targetLang?: TranslationTargetLang
+): ExistingTranslationData => {
+  if (!targetLang) {
+    return { hasTranslation: false };
+  }
+
+  // Check if we have the target language translation
+  let translation: string | undefined;
+  if (targetLang === "zh" && entry.wordZh) {
+    translation = entry.wordZh;
+  } else if (targetLang === "en" && entry.wordEn) {
+    translation = entry.wordEn;
+  } else if (targetLang === "ja" && entry.wordJa) {
+    translation = entry.wordJa;
+  }
+
+  // Check if we have the target language definition
+  let definitionTranslation: string | undefined;
+  if (targetLang === "zh" && entry.definitionZh) {
+    definitionTranslation = entry.definitionZh;
+  } else if (targetLang === "en" && entry.definitionEn) {
+    definitionTranslation = entry.definitionEn;
+  } else if (targetLang === "ja" && entry.definitionJa) {
+    definitionTranslation = entry.definitionJa;
+  }
+
+  // If we have either translation or definition translation, consider it as existing data
+  const hasTranslation = Boolean(translation || definitionTranslation);
+
+  return { hasTranslation, translation, definitionTranslation };
+};
+
 const sendMessage = async <T>(message: unknown): Promise<T | null> => {
   if (!chrome?.runtime?.sendMessage) {
     return null;
@@ -295,6 +336,11 @@ const triggerLookup = async () => {
     void addHighlightOnlyWord(normalizedWord);
   }
   ensureOverlayAutoClose();
+
+  // Determine if we have existing cached data
+  const hasExistingTranslation = checkExistingTranslation(entry, selectionLanguage, directionInfo?.targetLang);
+  const hasExistingDefinition = localDefinition != null;
+
   showLookupOverlay({
     word: entry.displayWord,
     definition: localDefinition,
@@ -309,7 +355,10 @@ const triggerLookup = async () => {
         ensureOverlayAutoClose();
         showNotice("Pronunciation unavailable on this device.");
       }
-    }
+    },
+    // Pass existing translation data if available
+    initialTranslation: hasExistingTranslation.translation,
+    initialDefinitionTranslation: hasExistingTranslation.definitionTranslation
   });
 
   latestLookup = {
@@ -322,7 +371,9 @@ const triggerLookup = async () => {
     language: selectionLanguage,
     pronunciationAvailable: entry.pronunciationAvailable
   };
-  if (translationEnabled && directionInfo) {
+
+  // Only request translation if we don't have cached data
+  if (translationEnabled && directionInfo && !hasExistingTranslation.hasTranslation) {
     const translationPromise = requestTranslation(
       sessionId,
       entry.displayWord,
@@ -331,14 +382,23 @@ const triggerLookup = async () => {
       directionInfo.targetLang
     );
     void translationPromise.then(() => {
+      // Only request definition backfill if we don't have a definition
       if (
         definitionBackfillEnabled &&
-        localDefinition == null &&
+        !hasExistingDefinition &&
         (selectionLanguage === "en" || selectionLanguage === "zh" || selectionLanguage === "ja")
       ) {
         void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
       }
     });
+  } else if (
+    definitionBackfillEnabled &&
+    !hasExistingDefinition &&
+    translationEnabled &&
+    (selectionLanguage === "en" || selectionLanguage === "zh" || selectionLanguage === "ja")
+  ) {
+    // We have translation but no definition, request definition backfill
+    void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
   }
 };
 
