@@ -1346,17 +1346,25 @@ export const showLookupOverlay = (
     overlay.translation.hidden = false;
     setDefinitionLabels(overlay, sourceLang, undefined);
 
-    // Show source definition if available
-    const sourceDefinition = normalizeEnglishDefinition(trimmedDefinition || overlay.definition.textContent);
-    overlay.translationWord.textContent = sourceDefinition;
-    overlay.translationWordLabel.textContent = `Definition (${sourceLang.toUpperCase()})`;
-
-    // Show translated word
+    // The definition area should show the translation result if we have word translation,
+    // otherwise show the original definition (same-language definition)
     if (content.initialTranslation) {
+      // We have a word translation, show it in the main definition area
       overlay.definition.textContent = content.initialTranslation;
     }
 
-    // Show definition translation if available
+    // translationWord area shows the ORIGINAL definition (source language definition)
+    const sourceDefinition = normalizeEnglishDefinition(trimmedDefinition || "");
+    if (sourceDefinition && sourceDefinition !== "Definition unavailable.") {
+      overlay.translationWord.textContent = sourceDefinition;
+      overlay.translationWordLabel.textContent = `Definition (${sourceLang.toUpperCase()})`;
+    } else {
+      // No source definition available, hide the word definition section
+      overlay.translationWord.textContent = "";
+      overlay.translationWordLabel.style.display = "none";
+    }
+
+    // translationDefinition area shows the TRANSLATION of the definition
     if (content.initialDefinitionTranslation) {
       overlay.translationDefinitionLabel.style.display = "block";
       overlay.translationDefinition.style.display = "block";
