@@ -59,6 +59,51 @@ const updateToggleButtonState = (button: HTMLButtonElement, isActive: boolean) =
   }
 };
 
+// Custom tooltip with shorter delay and positioned above buttons
+const setupCustomTooltip = (button: HTMLElement, text: string) => {
+  // Remove native title to prevent duplicate tooltips
+  button.removeAttribute("title");
+
+  // Create tooltip element
+  const tooltip = document.createElement("span");
+  tooltip.className = "wordmark-tooltip";
+  tooltip.textContent = text;
+  button.style.position = "relative";
+  button.appendChild(tooltip);
+
+  let showTimeout: number | null = null;
+  let hideTimeout: number | null = null;
+
+  const showTooltip = () => {
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+    if (showTimeout) return;
+    showTimeout = window.setTimeout(() => {
+      tooltip.classList.add("visible");
+      showTimeout = null;
+    }, 300); // 300ms delay (shorter than browser default)
+  };
+
+  const hideTooltip = () => {
+    if (showTimeout) {
+      clearTimeout(showTimeout);
+      showTimeout = null;
+    }
+    if (hideTimeout) return;
+    hideTimeout = window.setTimeout(() => {
+      tooltip.classList.remove("visible");
+      hideTimeout = null;
+    }, 100);
+  };
+
+  button.addEventListener("mouseenter", showTooltip);
+  button.addEventListener("mouseleave", hideTooltip);
+  button.addEventListener("focus", showTooltip);
+  button.addEventListener("blur", hideTooltip);
+};
+
 export const setWordSaveEnabled = (enabled: boolean) => {
   currentWordSaveEnabled = enabled;
   const overlay = getExistingOverlay();
@@ -575,9 +620,9 @@ const createOverlay = () => {
   const saveToggle = document.createElement("button");
   saveToggle.className = "wordmark-toggle wordmark-toggle--save";
   saveToggle.type = "button";
-  saveToggle.title = SAVE_LABEL;
   saveToggle.setAttribute("aria-label", "Toggle save to word list");
   ensureSaveToggleIcon(saveToggle);
+  setupCustomTooltip(saveToggle, SAVE_LABEL);
   saveToggle.addEventListener("click", () => {
     setWordSaveEnabled(!currentWordSaveEnabled);
   });
@@ -585,9 +630,9 @@ const createOverlay = () => {
   const highlightToggle = document.createElement("button");
   highlightToggle.className = "wordmark-toggle wordmark-toggle--highlight";
   highlightToggle.type = "button";
-  highlightToggle.title = "Highlight on page";
   highlightToggle.setAttribute("aria-label", "Toggle highlight on page");
   ensureHighlightToggleIcon(highlightToggle);
+  setupCustomTooltip(highlightToggle, "Highlight on page");
   highlightToggle.addEventListener("click", () => {
     setWordHighlightEnabled(!currentWordHighlightEnabled);
   });
@@ -711,9 +756,11 @@ const getExistingOverlay = (): OverlayElements | null => {
   });
   saveToggle.classList.add("wordmark-toggle", "wordmark-toggle--save");
   saveToggle.type = "button";
-  saveToggle.title = SAVE_LABEL;
   saveToggle.setAttribute("aria-label", "Toggle save to word list");
   ensureSaveToggleIcon(saveToggle);
+  if (!saveToggle.querySelector(".wordmark-tooltip")) {
+    setupCustomTooltip(saveToggle, SAVE_LABEL);
+  }
 
   const highlightToggleButtons = existing.querySelectorAll<HTMLButtonElement>(".wordmark-toggle--highlight");
   const highlightToggle = highlightToggleButtons[0] ?? document.createElement("button");
@@ -724,9 +771,11 @@ const getExistingOverlay = (): OverlayElements | null => {
   });
   highlightToggle.classList.add("wordmark-toggle", "wordmark-toggle--highlight");
   highlightToggle.type = "button";
-  highlightToggle.title = "Highlight on page";
   highlightToggle.setAttribute("aria-label", "Toggle highlight on page");
   ensureHighlightToggleIcon(highlightToggle);
+  if (!highlightToggle.querySelector(".wordmark-tooltip")) {
+    setupCustomTooltip(highlightToggle, "Highlight on page");
+  }
 
   // Ensure header controls container exists
   const header = existing.querySelector(".wordmark-header") as HTMLDivElement | null;

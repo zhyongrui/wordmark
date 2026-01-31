@@ -272,7 +272,7 @@ const triggerLookup = async () => {
     ? true
     : inList
       ? !entry.highlightDisabled
-      : highlightOnlyWords.has(normalizedWord);
+      : false;
   if (defaultHighlight && highlightMutedWords.has(normalizedWord)) {
     highlightMutedWords.delete(normalizedWord);
     updateHighlightWords();
@@ -504,7 +504,14 @@ const updateHighlightWords = () => {
     if (effective) {
       next.add(currentLookupNormalizedWord);
     } else {
-      next.delete(currentLookupNormalizedWord);
+      // Only remove the word if it's not already permanently highlighted
+      // This preserves the highlight state of words that should be highlighted
+      const isInListHighlightWords = listHighlightWords.has(currentLookupNormalizedWord);
+      const isInHighlightOnlyWords = highlightOnlyWords.has(currentLookupNormalizedWord);
+      if (!isInListHighlightWords && !isInHighlightOnlyWords) {
+        next.delete(currentLookupNormalizedWord);
+      }
+      // If word is already in listHighlightWords or highlightOnlyWords, keep it highlighted
     }
   }
   highlightEngine.setWords(Array.from(next));
@@ -522,10 +529,18 @@ const resolveHighlightEnabled = (settings: { highlightQueriedWords: boolean }) =
   if (currentLookupHighlightOverride !== null) {
     return currentLookupHighlightOverride;
   }
-  if (currentLookupHighlightDefault !== null) {
-    return currentLookupHighlightDefault;
+  // If global highlight is enabled, button should always be active
+  if (settings.highlightQueriedWords) {
+    return true;
   }
-  return settings.highlightQueriedWords;
+  // If global highlight is disabled, check if word is currently highlighted on page
+  if (currentLookupNormalizedWord) {
+    const isInListHighlightWords = listHighlightWords.has(currentLookupNormalizedWord);
+    const isInHighlightOnlyWords = highlightOnlyWords.has(currentLookupNormalizedWord);
+    const isInMutedWords = highlightMutedWords.has(currentLookupNormalizedWord);
+    return (isInListHighlightWords || isInHighlightOnlyWords) && !isInMutedWords;
+  }
+  return false;
 };
 
 const applyHighlightState = (
@@ -637,6 +652,11 @@ const handleSaveToggle = async (enabled: boolean) => {
 
   if (enabled) {
     if (inList) {
+      // Word already exists, but user clicked save button, so increment query count
+      await sendMessage<AddWordResponse>({
+        type: MessageTypes.AddWord,
+        payload: { word: lookup.word, ttsAvailable: lookup.pronunciationAvailable }
+      });
       return;
     }
     const response = await sendMessage<AddWordResponse>({
