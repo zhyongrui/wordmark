@@ -12,7 +12,7 @@ import { filterWordEntries, sortWordEntries } from "../shared/word/list";
 import { detectWordLanguage, type WordLanguage } from "../shared/word/normalize";
 
 type WordsResponse =
-  | { ok: true; words: WordEntry[] }
+  | { ok: true; words: WordEntry[]; highlightOnlyWords?: string[] }
   | { ok: false; error: string };
 
 type DeleteResponse =

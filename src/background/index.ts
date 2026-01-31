@@ -4,7 +4,22 @@ import {
 } from "./handlers/definition-backfill";
 import { handleLookupRequest, type LookupRequestPayload } from "./handlers/lookup";
 import { handleTranslationRequest, type TranslationRequestPayload } from "./handlers/translation";
-import { handleDeleteWord, handleListWords, handleAddWord, type DeleteWordPayload, type AddWordPayload } from "./handlers/words";
+import {
+  handleDeleteWord,
+  handleListWords,
+  handleAddWord,
+  handleRestoreWord,
+  handleSetWordHighlight,
+  handleAddHighlightOnlyWord,
+  handleRemoveHighlightOnlyWord,
+  handleAddHighlightMutedWord,
+  handleRemoveHighlightMutedWord,
+  type DeleteWordPayload,
+  type AddWordPayload,
+  type RestoreWordPayload,
+  type SetWordHighlightPayload,
+  type HighlightOnlyPayload
+} from "./handlers/words";
 import {
   handleGetHighlightPreference,
   handleSetHighlightPreference,
@@ -124,6 +139,24 @@ const initializeBackground = () => {
           return true;
         case MessageTypes.AddWord:
           handleAddWord(payload as AddWordPayload).then(sendResponse);
+          return true;
+        case MessageTypes.RestoreWord:
+          handleRestoreWord(payload as RestoreWordPayload).then(sendResponse);
+          return true;
+        case MessageTypes.SetWordHighlight:
+          handleSetWordHighlight(payload as SetWordHighlightPayload).then(sendResponse);
+          return true;
+        case MessageTypes.AddHighlightOnlyWord:
+          handleAddHighlightOnlyWord(payload as HighlightOnlyPayload).then(sendResponse);
+          return true;
+        case MessageTypes.RemoveHighlightOnlyWord:
+          handleRemoveHighlightOnlyWord(payload as HighlightOnlyPayload).then(sendResponse);
+          return true;
+        case MessageTypes.AddHighlightMutedWord:
+          handleAddHighlightMutedWord(payload as HighlightOnlyPayload).then(sendResponse);
+          return true;
+        case MessageTypes.RemoveHighlightMutedWord:
+          handleRemoveHighlightMutedWord(payload as HighlightOnlyPayload).then(sendResponse);
           return true;
         case MessageTypes.GetHighlightPreference:
           handleGetHighlightPreference().then(sendResponse);

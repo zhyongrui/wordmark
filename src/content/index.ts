@@ -3,12 +3,14 @@ import {
   bumpAutoCloseIgnore,
   captureSelectionRect,
   getCachedSelectionRect,
-  getWordSaveEnabled,
-  getWordHighlightEnabled,
   hideLookupOverlay,
   installSelectionRectTracking,
   isOverlayOpen,
   overlayContainsTarget,
+  setWordSaveToggleHandler,
+  setWordHighlightToggleHandler,
+  setWordSaveEnabled,
+  setWordHighlightEnabled,
   setOverlayHideListener,
   shouldIgnoreAutoClose,
   resetTranslationUi,
@@ -35,25 +37,54 @@ import {
 } from "../shared/translation/directions";
 import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/translation/settings";
 import type { TranslationResponse, TranslationTargetLang } from "../shared/translation/types";
-import { detectWordLanguage, type WordLanguage } from "../shared/word/normalize";
+import { detectWordLanguage, normalizeWord, type WordLanguage } from "../shared/word/normalize";
 
 type LookupResponse =
   | {
       ok: true;
       entry: {
+        normalizedWord: string;
         displayWord: string;
         definitionEn?: string;
         definitionZh?: string;
         definitionJa?: string;
         definitionSource: DefinitionSource;
         pronunciationAvailable: boolean;
+        highlightDisabled?: boolean;
       };
+      wasExisting: boolean;
+      savedByLookup: boolean;
+      previousEntry: WordEntry | null;
     }
   | { ok: false; error: string };
 
 type WordsResponse =
-  | { ok: true; words: WordEntry[] }
+  | { ok: true; words: WordEntry[]; highlightOnlyWords: string[]; highlightMutedWords: string[] }
   | { ok: false; error: string };
+
+type AddWordResponse =
+  | { ok: true; entry: WordEntry }
+  | { ok: false; error: "invalid-payload" | "invalid-selection" | "unknown" };
+
+type DeleteWordResponse =
+  | { ok: true; fullyDeleted: boolean; remainingTranslations: string[] }
+  | { ok: false; error: "invalid-payload" | "unknown" };
+
+type RestoreWordResponse =
+  | { ok: true; entry: WordEntry | null }
+  | { ok: false; error: "invalid-payload" | "unknown" };
+
+type SetWordHighlightResponse =
+  | { ok: true; entry: WordEntry }
+  | { ok: false; error: "invalid-payload" | "not_found" | "unknown" };
+
+type HighlightOnlyResponse =
+  | { ok: true; highlightOnlyWords: string[] }
+  | { ok: false; error: "invalid-payload" | "unknown" };
+
+type HighlightMutedResponse =
+  | { ok: true; highlightMutedWords: string[] }
+  | { ok: false; error: "invalid-payload" | "unknown" };
 
 type PreferencesResponse =
   | { ok: true; preferences: Preferences }
@@ -62,6 +93,17 @@ type PreferencesResponse =
 const STORAGE_KEY = "wordmark:storage";
 const highlightEngine = createHighlightEngine();
 let highlightEnabled = true;
+let listHighlightWords = new Set<string>();
+let highlightOnlyWords = new Set<string>();
+let highlightMutedWords = new Set<string>();
+let currentLookupHighlightOverride: boolean | null = null;
+let currentLookupHighlightDefault: boolean | null = null;
+let currentLookupHighlightSetting = true;
+let currentLookupNormalizedWord: string | null = null;
+let currentLookupSaveOverride: boolean | null = null;
+let currentLookupWasExisting = false;
+let currentLookupSavedByLookup = false;
+let currentLookupPreviousEntry: WordEntry | null = null;
 let lookupSessionId = 0;
 let translationEnabled = false;
 let definitionBackfillEnabled = false;
@@ -69,11 +111,13 @@ let definitionTranslationEnabled = false;
 let latestLookup:
   | {
       sessionId: number;
+      normalizedWord: string;
       word: string;
       definitionEn?: string;
       definitionZh?: string;
       definitionJa?: string;
       language: WordLanguage;
+      pronunciationAvailable: boolean;
     }
   | null = null;
 
@@ -152,6 +196,7 @@ const triggerLookup = async () => {
   translationEnabled = Boolean(settings.enabled);
   definitionBackfillEnabled = Boolean(settings.definitionBackfillEnabled);
   definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
+  currentLookupHighlightSetting = settings.highlightQueriedWords;
 
   let directionInfo:
     | {
@@ -214,6 +259,40 @@ const triggerLookup = async () => {
   const sessionId = lookupSessionId;
   const localDefinition = getDefinitionForLanguage(entry, selectionLanguage);
   const suppressFallback = !translationEnabled;
+  currentLookupSaveOverride = null;
+  currentLookupHighlightOverride = null;
+  currentLookupNormalizedWord = entry.normalizedWord;
+  currentLookupWasExisting = response.wasExisting;
+  currentLookupSavedByLookup = response.savedByLookup;
+  currentLookupPreviousEntry = response.previousEntry ?? null;
+  const inList = currentLookupWasExisting || currentLookupSavedByLookup;
+  const normalizedWord = entry.normalizedWord;
+  const defaultHighlight = settings.highlightQueriedWords;
+  currentLookupHighlightDefault = defaultHighlight
+    ? true
+    : inList
+      ? !entry.highlightDisabled
+      : highlightOnlyWords.has(normalizedWord);
+  if (defaultHighlight && highlightMutedWords.has(normalizedWord)) {
+    highlightMutedWords.delete(normalizedWord);
+    updateHighlightWords();
+    void removeHighlightMutedWord(normalizedWord);
+  }
+  updateHighlightWords();
+  if (defaultHighlight && inList && entry.highlightDisabled) {
+    listHighlightWords.add(normalizedWord);
+    updateHighlightWords();
+    void sendMessage<SetWordHighlightResponse>({
+      type: MessageTypes.SetWordHighlight,
+      payload: { normalizedWord, highlightDisabled: false }
+    });
+  }
+  if (inList && highlightOnlyWords.has(normalizedWord)) {
+    void removeHighlightOnlyWord(normalizedWord);
+  }
+  if (defaultHighlight && !inList) {
+    void addHighlightOnlyWord(normalizedWord);
+  }
   ensureOverlayAutoClose();
   showLookupOverlay({
     word: entry.displayWord,
@@ -221,8 +300,8 @@ const triggerLookup = async () => {
     pronunciationAvailable: entry.pronunciationAvailable,
     sourceLang: selectionLanguage,
     suppressFallback,
-    saveEnabled: settings.saveQueriedWords,
-    highlightEnabled: settings.highlightQueriedWords,
+    saveEnabled: resolveSaveEnabled(settings),
+    highlightEnabled: resolveHighlightEnabled(settings),
     anchorRect,
     onPronounce: () => {
       if (!playPronunciation(entry.displayWord)) {
@@ -234,11 +313,13 @@ const triggerLookup = async () => {
 
   latestLookup = {
     sessionId,
+    normalizedWord: entry.normalizedWord,
     word: entry.displayWord,
     definitionEn: entry.definitionEn,
     definitionZh: entry.definitionZh,
     definitionJa: entry.definitionJa,
-    language: selectionLanguage
+    language: selectionLanguage,
+    pronunciationAvailable: entry.pronunciationAvailable
   };
   if (translationEnabled && directionInfo) {
     const translationPromise = requestTranslation(
@@ -386,12 +467,16 @@ const syncTranslationEnabledState = async () => {
   }
 };
 
-const fetchWords = async (): Promise<WordEntry[]> => {
+const fetchWords = async (): Promise<{ words: WordEntry[]; highlightOnlyWords: string[]; highlightMutedWords: string[] }> => {
   const response = await sendMessage<WordsResponse>({ type: MessageTypes.ListWords });
   if (!response || !response.ok) {
-    return [];
+    return { words: [], highlightOnlyWords: [], highlightMutedWords: [] };
   }
-  return response.words;
+  return {
+    words: response.words,
+    highlightOnlyWords: Array.isArray(response.highlightOnlyWords) ? response.highlightOnlyWords : [],
+    highlightMutedWords: Array.isArray(response.highlightMutedWords) ? response.highlightMutedWords : []
+  };
 };
 
 const fetchPreferences = async (): Promise<Preferences> => {
@@ -404,16 +489,293 @@ const fetchPreferences = async (): Promise<Preferences> => {
   return response.preferences;
 };
 
-const applyHighlightState = (words: WordEntry[], preferences: Preferences) => {
+const updateHighlightWords = () => {
+  if (!highlightEnabled) {
+    highlightEngine.setWords([]);
+    highlightEngine.setEnabled(false);
+    return;
+  }
+
+  const next = new Set([...listHighlightWords, ...highlightOnlyWords]);
+  highlightMutedWords.forEach((word) => next.delete(word));
+  if (currentLookupNormalizedWord && currentLookupHighlightDefault !== null) {
+    const effective =
+      currentLookupHighlightOverride !== null ? currentLookupHighlightOverride : currentLookupHighlightDefault;
+    if (effective) {
+      next.add(currentLookupNormalizedWord);
+    } else {
+      next.delete(currentLookupNormalizedWord);
+    }
+  }
+  highlightEngine.setWords(Array.from(next));
+  highlightEngine.setEnabled(true);
+};
+
+const resolveSaveEnabled = (settings: { saveQueriedWords: boolean }) => {
+  if (currentLookupSaveOverride !== null) {
+    return currentLookupSaveOverride;
+  }
+  return settings.saveQueriedWords;
+};
+
+const resolveHighlightEnabled = (settings: { highlightQueriedWords: boolean }) => {
+  if (currentLookupHighlightOverride !== null) {
+    return currentLookupHighlightOverride;
+  }
+  if (currentLookupHighlightDefault !== null) {
+    return currentLookupHighlightDefault;
+  }
+  return settings.highlightQueriedWords;
+};
+
+const applyHighlightState = (
+  words: WordEntry[],
+  highlightOnly: string[],
+  highlightMuted: string[],
+  preferences: Preferences
+) => {
   highlightEnabled = preferences.highlightEnabled;
-  const normalizedWords = words.map((entry) => entry.normalizedWord);
-  highlightEngine.setWords(normalizedWords);
-  highlightEngine.setEnabled(highlightEnabled);
+  listHighlightWords = new Set(
+    words.filter((entry) => !entry.highlightDisabled).map((entry) => entry.normalizedWord)
+  );
+  highlightOnlyWords = new Set(highlightOnly);
+  highlightMutedWords = new Set(highlightMuted);
+  updateHighlightWords();
 };
 
 const syncHighlightState = async () => {
-  const [words, preferences] = await Promise.all([fetchWords(), fetchPreferences()]);
-  applyHighlightState(words, preferences);
+  const [wordState, preferences] = await Promise.all([fetchWords(), fetchPreferences()]);
+  applyHighlightState(wordState.words, wordState.highlightOnlyWords, wordState.highlightMutedWords, preferences);
+};
+
+const setHighlightOnlyWords = (next: string[]) => {
+  highlightOnlyWords = new Set(next);
+  updateHighlightWords();
+};
+
+const setHighlightMutedWords = (next: string[]) => {
+  highlightMutedWords = new Set(next);
+  updateHighlightWords();
+};
+
+const addHighlightOnlyWord = async (normalizedWord: string) => {
+  if (highlightOnlyWords.has(normalizedWord)) {
+    return;
+  }
+  const response = await sendMessage<HighlightOnlyResponse>({
+    type: MessageTypes.AddHighlightOnlyWord,
+    payload: { normalizedWord }
+  });
+  if (response && response.ok) {
+    setHighlightOnlyWords(response.highlightOnlyWords);
+  }
+};
+
+const removeHighlightOnlyWord = async (normalizedWord: string) => {
+  if (!highlightOnlyWords.has(normalizedWord)) {
+    return;
+  }
+  const response = await sendMessage<HighlightOnlyResponse>({
+    type: MessageTypes.RemoveHighlightOnlyWord,
+    payload: { normalizedWord }
+  });
+  if (response && response.ok) {
+    setHighlightOnlyWords(response.highlightOnlyWords);
+  }
+};
+
+const addHighlightMutedWord = async (normalizedWord: string) => {
+  if (highlightMutedWords.has(normalizedWord)) {
+    return;
+  }
+  const response = await sendMessage<HighlightMutedResponse>({
+    type: MessageTypes.AddHighlightMutedWord,
+    payload: { normalizedWord }
+  });
+  if (response && response.ok) {
+    setHighlightMutedWords(response.highlightMutedWords);
+  }
+};
+
+const removeHighlightMutedWord = async (normalizedWord: string) => {
+  if (!highlightMutedWords.has(normalizedWord)) {
+    return;
+  }
+  const response = await sendMessage<HighlightMutedResponse>({
+    type: MessageTypes.RemoveHighlightMutedWord,
+    payload: { normalizedWord }
+  });
+  if (response && response.ok) {
+    setHighlightMutedWords(response.highlightMutedWords);
+  }
+};
+
+let suppressSaveToggleHandler = false;
+let suppressHighlightToggleHandler = false;
+
+const handleSaveToggle = async (enabled: boolean) => {
+  if (suppressSaveToggleHandler) {
+    return;
+  }
+
+  const lookup = latestLookup;
+  if (!lookup) {
+    return;
+  }
+
+  const normalizedWord = lookup.normalizedWord || normalizeWord(lookup.word);
+  if (!normalizedWord) {
+    return;
+  }
+
+  currentLookupSaveOverride = enabled;
+  const shouldHighlight =
+    currentLookupHighlightOverride !== null
+      ? currentLookupHighlightOverride
+      : currentLookupHighlightDefault ?? currentLookupHighlightSetting;
+  const inList = currentLookupWasExisting || currentLookupSavedByLookup;
+
+  if (enabled) {
+    if (inList) {
+      return;
+    }
+    const response = await sendMessage<AddWordResponse>({
+      type: MessageTypes.AddWord,
+      payload: { word: lookup.word, ttsAvailable: lookup.pronunciationAvailable }
+    });
+    if (!response || !response.ok) {
+      suppressSaveToggleHandler = true;
+      setWordSaveEnabled(false);
+      suppressSaveToggleHandler = false;
+      currentLookupSaveOverride = false;
+      return;
+    }
+    currentLookupSavedByLookup = true;
+    if (shouldHighlight) {
+      listHighlightWords.add(response.entry.normalizedWord);
+    } else {
+      listHighlightWords.delete(response.entry.normalizedWord);
+      void sendMessage<SetWordHighlightResponse>({
+        type: MessageTypes.SetWordHighlight,
+        payload: { normalizedWord: response.entry.normalizedWord, highlightDisabled: true }
+      });
+    }
+    updateHighlightWords();
+    void removeHighlightOnlyWord(response.entry.normalizedWord);
+    void removeHighlightMutedWord(response.entry.normalizedWord);
+    return;
+  }
+
+  if (currentLookupSavedByLookup && !currentLookupWasExisting) {
+    const response = await sendMessage<DeleteWordResponse>({
+      type: MessageTypes.DeleteWord,
+      payload: { normalizedWord }
+    });
+
+    if (!response || !response.ok) {
+      suppressSaveToggleHandler = true;
+      setWordSaveEnabled(true);
+      suppressSaveToggleHandler = false;
+      currentLookupSaveOverride = true;
+      return;
+    }
+
+    currentLookupSavedByLookup = false;
+    listHighlightWords.delete(normalizedWord);
+    updateHighlightWords();
+    if (shouldHighlight) {
+      void addHighlightOnlyWord(normalizedWord);
+      void removeHighlightMutedWord(normalizedWord);
+    } else {
+      void removeHighlightOnlyWord(normalizedWord);
+      void addHighlightMutedWord(normalizedWord);
+    }
+    return;
+  }
+
+  if (currentLookupSavedByLookup && currentLookupWasExisting) {
+    const restoreEntry = currentLookupPreviousEntry
+      ? {
+          ...currentLookupPreviousEntry,
+          highlightDisabled: !shouldHighlight
+        }
+      : currentLookupPreviousEntry;
+    const response = await sendMessage<RestoreWordResponse>({
+      type: MessageTypes.RestoreWord,
+      payload: { normalizedWord, previousEntry: restoreEntry }
+    });
+
+    if (!response || !response.ok) {
+      suppressSaveToggleHandler = true;
+      setWordSaveEnabled(true);
+      suppressSaveToggleHandler = false;
+      currentLookupSaveOverride = true;
+      return;
+    }
+
+    currentLookupSavedByLookup = false;
+    if (restoreEntry && !restoreEntry.highlightDisabled) {
+      listHighlightWords.add(normalizedWord);
+    } else {
+      listHighlightWords.delete(normalizedWord);
+    }
+    updateHighlightWords();
+    void removeHighlightOnlyWord(normalizedWord);
+    void removeHighlightMutedWord(normalizedWord);
+  }
+};
+
+const handleHighlightToggle = async (enabled: boolean) => {
+  if (suppressHighlightToggleHandler) {
+    return;
+  }
+
+  const lookup = latestLookup;
+  if (!lookup) {
+    return;
+  }
+
+  const normalizedWord = lookup.normalizedWord || normalizeWord(lookup.word);
+  if (!normalizedWord) {
+    return;
+  }
+
+  currentLookupHighlightOverride = enabled;
+  currentLookupNormalizedWord = normalizedWord;
+  updateHighlightWords();
+
+  const inList = currentLookupWasExisting || currentLookupSavedByLookup;
+  if (!inList) {
+    if (enabled) {
+      void removeHighlightMutedWord(normalizedWord);
+      void addHighlightOnlyWord(normalizedWord);
+    } else {
+      void removeHighlightOnlyWord(normalizedWord);
+      void addHighlightMutedWord(normalizedWord);
+    }
+    return;
+  }
+
+  const response = await sendMessage<SetWordHighlightResponse>({
+    type: MessageTypes.SetWordHighlight,
+    payload: { normalizedWord, highlightDisabled: !enabled }
+  });
+
+  if (!response || !response.ok) {
+    suppressHighlightToggleHandler = true;
+    setWordHighlightEnabled(!enabled);
+    suppressHighlightToggleHandler = false;
+    currentLookupHighlightOverride = !enabled;
+    updateHighlightWords();
+    return;
+  }
+
+  if (enabled) {
+    listHighlightWords.add(normalizedWord);
+  } else {
+    listHighlightWords.delete(normalizedWord);
+  }
+  updateHighlightWords();
 };
 
 let autoCloseActive = false;
@@ -500,8 +862,18 @@ const removeLegacyHighlightToggle = () => {
 const initializeContent = () => {
   setOverlayHideListener(() => {
     latestLookup = null;
+    currentLookupSaveOverride = null;
+    currentLookupWasExisting = false;
+    currentLookupSavedByLookup = false;
+    currentLookupPreviousEntry = null;
+    currentLookupHighlightOverride = null;
+    currentLookupHighlightDefault = null;
+    currentLookupNormalizedWord = null;
+    updateHighlightWords();
     removeOverlayAutoClose();
   });
+  setWordSaveToggleHandler(handleSaveToggle);
+  setWordHighlightToggleHandler(handleHighlightToggle);
   removeLegacyHighlightToggle();
   installSelectionRectTracking();
   void syncHighlightState();

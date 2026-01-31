@@ -1,5 +1,6 @@
 import { migrateStorage } from "../storage/migrate";
 import { createEmptyStorage, StorageEnvelope, WordEntry } from "../storage/schema";
+import { normalizeWord } from "./normalize";
 
 const STORAGE_KEY = "wordmark:storage";
 
@@ -89,6 +90,7 @@ export const recordLookup = async (entry: Omit<WordEntry, "queryCount" | "lastQu
     existing && typeof existing.definitionZh === "string" && existing.definitionZh.trim() ? existing.definitionZh : null;
   const existingDefinitionJa =
     existing && typeof existing.definitionJa === "string" && existing.definitionJa.trim() ? existing.definitionJa : null;
+  const existingHighlightDisabled = existing?.highlightDisabled;
   const nextWordZh =
     typeof entry.wordZh === "string" && entry.wordZh.trim() ? entry.wordZh : existingWordZh;
   const nextWordJa =
@@ -110,7 +112,8 @@ export const recordLookup = async (entry: Omit<WordEntry, "queryCount" | "lastQu
     wordEn: nextWordEn ?? undefined,
     definitionEn: nextDefinitionEn ?? undefined,
     definitionZh: nextDefinitionZh ?? undefined,
-    definitionJa: nextDefinitionJa ?? undefined
+    definitionJa: nextDefinitionJa ?? undefined,
+    highlightDisabled: existingHighlightDisabled
   };
 
   const nextStore: StorageEnvelope = {
@@ -419,6 +422,105 @@ export const deleteWordEntry = async (
   await writeStore(nextStore);
   return { fullyDeleted: false, remainingTranslations };
 };
+
+export const setWordHighlightDisabled = async (
+  normalizedWord: string,
+  highlightDisabled: boolean
+): Promise<WordEntry | null> => {
+  const store = await readStore();
+  const existing = store.wordsByKey[normalizedWord];
+  if (!existing) {
+    return null;
+  }
+
+  const nextEntry: WordEntry = {
+    ...existing,
+    highlightDisabled
+  };
+
+  const nextStore: StorageEnvelope = {
+    ...store,
+    wordsByKey: {
+      ...store.wordsByKey,
+      [normalizedWord]: nextEntry
+    }
+  };
+
+  await writeStore(nextStore);
+  return nextEntry;
+};
+
+const normalizeHighlightWord = (raw: string): string | null => {
+  if (!raw) {
+    return null;
+  }
+  return normalizeWord(raw) ?? raw.trim();
+};
+
+export const addHighlightOnlyWord = async (rawWord: string): Promise<string[]> => {
+  const normalizedWord = normalizeHighlightWord(rawWord);
+  if (!normalizedWord) {
+    return [];
+  }
+
+  const store = await readStore();
+  const existing = Array.isArray(store.highlightOnlyWords) ? store.highlightOnlyWords : [];
+  if (existing.includes(normalizedWord)) {
+    return existing;
+  }
+  const next = [...existing, normalizedWord];
+  await writeStore({ ...store, highlightOnlyWords: next });
+  return next;
+};
+
+export const removeHighlightOnlyWord = async (rawWord: string): Promise<string[]> => {
+  const normalizedWord = normalizeHighlightWord(rawWord);
+  if (!normalizedWord) {
+    return [];
+  }
+
+  const store = await readStore();
+  const existing = Array.isArray(store.highlightOnlyWords) ? store.highlightOnlyWords : [];
+  if (!existing.includes(normalizedWord)) {
+    return existing;
+  }
+  const next = existing.filter((word) => word !== normalizedWord);
+  await writeStore({ ...store, highlightOnlyWords: next });
+  return next;
+};
+
+export const addHighlightMutedWord = async (rawWord: string): Promise<string[]> => {
+  const normalizedWord = normalizeHighlightWord(rawWord);
+  if (!normalizedWord) {
+    return [];
+  }
+
+  const store = await readStore();
+  const existing = Array.isArray(store.highlightMutedWords) ? store.highlightMutedWords : [];
+  if (existing.includes(normalizedWord)) {
+    return existing;
+  }
+  const next = [...existing, normalizedWord];
+  await writeStore({ ...store, highlightMutedWords: next });
+  return next;
+};
+
+export const removeHighlightMutedWord = async (rawWord: string): Promise<string[]> => {
+  const normalizedWord = normalizeHighlightWord(rawWord);
+  if (!normalizedWord) {
+    return [];
+  }
+
+  const store = await readStore();
+  const existing = Array.isArray(store.highlightMutedWords) ? store.highlightMutedWords : [];
+  if (!existing.includes(normalizedWord)) {
+    return existing;
+  }
+  const next = existing.filter((word) => word !== normalizedWord);
+  await writeStore({ ...store, highlightMutedWords: next });
+  return next;
+};
+
 
 export const __resetMemoryStore = (): void => {
   memoryStore.data = createEmptyStorage();

@@ -11,6 +11,40 @@ export const migrateStorage = (input: unknown): StorageEnvelope => {
       ...createEmptyStorage(),
       ...data,
       wordsByKey: data.wordsByKey ?? {},
+      highlightOnlyWords: Array.isArray(data.highlightOnlyWords)
+        ? (data.highlightOnlyWords.filter((word) => typeof word === "string") as string[])
+        : [],
+      highlightMutedWords: Array.isArray(data.highlightMutedWords)
+        ? (data.highlightMutedWords.filter((word) => typeof word === "string") as string[])
+        : [],
+      preferences: data.preferences ?? { highlightEnabled: true }
+    };
+  }
+
+  // Migrate from version 4 to 5: add highlight-muted list
+  if (data.schemaVersion === 4) {
+    return {
+      ...createEmptyStorage(),
+      ...data,
+      schemaVersion: SCHEMA_VERSION,
+      wordsByKey: data.wordsByKey ?? {},
+      highlightOnlyWords: Array.isArray(data.highlightOnlyWords)
+        ? (data.highlightOnlyWords.filter((word) => typeof word === "string") as string[])
+        : [],
+      highlightMutedWords: [],
+      preferences: data.preferences ?? { highlightEnabled: true }
+    };
+  }
+
+  // Migrate from version 3 to 4: add highlight-only list
+  if (data.schemaVersion === 3) {
+    return {
+      ...createEmptyStorage(),
+      ...data,
+      schemaVersion: SCHEMA_VERSION,
+      wordsByKey: data.wordsByKey ?? {},
+      highlightOnlyWords: [],
+      highlightMutedWords: [],
       preferences: data.preferences ?? { highlightEnabled: true }
     };
   }
@@ -22,6 +56,7 @@ export const migrateStorage = (input: unknown): StorageEnvelope => {
       for (const [key, entry] of Object.entries(data.wordsByKey)) {
         if (entry && typeof entry === "object") {
           const { definition: _removed, ...rest } = entry as { definition?: unknown };
+          void _removed;
           migratedWords[key] = rest;
         }
       }
@@ -31,6 +66,8 @@ export const migrateStorage = (input: unknown): StorageEnvelope => {
       ...data,
       schemaVersion: SCHEMA_VERSION,
       wordsByKey: migratedWords,
+      highlightOnlyWords: [],
+      highlightMutedWords: [],
       preferences: data.preferences ?? { highlightEnabled: true }
     };
   }
@@ -41,6 +78,8 @@ export const migrateStorage = (input: unknown): StorageEnvelope => {
       ...data,
       schemaVersion: SCHEMA_VERSION,
       wordsByKey: data.wordsByKey ?? {},
+      highlightOnlyWords: [],
+      highlightMutedWords: [],
       preferences: data.preferences ?? { highlightEnabled: true }
     };
   }

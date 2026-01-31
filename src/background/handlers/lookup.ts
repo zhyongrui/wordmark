@@ -2,6 +2,7 @@ import type { DefinitionSource } from "../../shared/messages";
 import { shapeLookupResult } from "../../shared/word/lookup";
 import { normalizeSelection } from "../../shared/word/normalize";
 import { recordLookup, readStore } from "../../shared/word/store";
+import type { WordEntry } from "../../shared/storage/schema";
 import { readTranslationSettings } from "../../shared/translation/settings";
 
 export type LookupRequestPayload = {
@@ -15,6 +16,9 @@ export type LookupResponse =
       entry: Awaited<ReturnType<typeof recordLookup>> & {
         definitionSource: DefinitionSource;
       };
+      wasExisting: boolean;
+      savedByLookup: boolean;
+      previousEntry: WordEntry | null;
     }
   | { ok: false; error: "invalid-selection" | "invalid-payload" };
 
@@ -36,14 +40,17 @@ export const handleLookupRequest = async (payload: LookupRequestPayload): Promis
 
   // Check if we should save queried words
   const settings = await readTranslationSettings();
+  const store = await readStore();
+  const existing = store.wordsByKey[selection.normalizedWord];
   let storedEntry;
+  let savedByLookup = false;
 
   if (settings.saveQueriedWords) {
     storedEntry = await recordLookup(result);
+    savedByLookup = true;
   } else {
     // Don't record, but check if word already exists
-    const store = await readStore();
-    storedEntry = store.wordsByKey[selection.normalizedWord] || {
+    storedEntry = existing || {
       normalizedWord: selection.normalizedWord,
       displayWord: payload.selectedText,
       queryCount: 0,
@@ -61,5 +68,5 @@ export const handleLookupRequest = async (payload: LookupRequestPayload): Promis
     definitionSource: (hasLocalDefinition ? "local" : "none") as DefinitionSource,
     pronunciationAvailable: result.pronunciationAvailable
   };
-  return { ok: true, entry };
+  return { ok: true, entry, wasExisting: Boolean(existing), savedByLookup, previousEntry: existing ?? null };
 };

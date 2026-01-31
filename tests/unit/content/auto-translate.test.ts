@@ -58,12 +58,17 @@ vi.mock("../../../src/content/lookup-overlay", () => {
     overlayContainsTarget: vi.fn(() => false),
     resetTranslationUi: vi.fn(),
     setOverlayHideListener: vi.fn(),
+    setWordSaveToggleHandler: vi.fn(),
+    setWordHighlightToggleHandler: vi.fn(),
+    setWordSaveEnabled: vi.fn(),
+    setWordHighlightEnabled: vi.fn(),
     setTranslateAvailable: vi.fn(),
     shouldIgnoreAutoClose: vi.fn(() => false),
     showGeneratedDefinitionError: vi.fn(),
+    showGeneratedDefinitionLoading: vi.fn(),
+    showGeneratedDefinitionResult: vi.fn(),
     showTranslationError: vi.fn(),
     showTranslationLoading,
-    showGeneratedDefinitionLoading: vi.fn(),
     showLookupOverlay,
     showTranslationResult: vi.fn(),
     showNotice
@@ -100,7 +105,7 @@ const installFakeChromeRuntime = (handlers: {
       return Promise.resolve(handlers.onTranslate());
     }
     if (message.type === MessageTypes.ListWords) {
-      return Promise.resolve({ ok: true, words: [] });
+      return Promise.resolve({ ok: true, words: [], highlightOnlyWords: [], highlightMutedWords: [] });
     }
     if (message.type === MessageTypes.GetHighlightPreference) {
       return Promise.resolve({ ok: true, preferences: { highlightEnabled: true } });

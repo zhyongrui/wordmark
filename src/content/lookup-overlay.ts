@@ -40,7 +40,6 @@ let selectionTrackingInstalled = false;
 let positionAttemptId = 0;
 let currentWordSaveEnabled = true;
 let currentWordHighlightEnabled = true;
-let currentWord: string | null = null;
 let onWordSaveToggle: ((enabled: boolean) => void) | null = null;
 let onWordHighlightToggle: ((enabled: boolean) => void) | null = null;
 
@@ -1268,8 +1267,6 @@ export const showLookupOverlay = (
   const sourceLang = content.sourceLang ?? "en";
 
   // Store current word
-  currentWord = content.word;
-
   // Initialize toggle states from global settings (or use provided values)
   currentWordSaveEnabled = content.saveEnabled ?? true;
   currentWordHighlightEnabled = content.highlightEnabled ?? true;

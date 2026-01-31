@@ -164,7 +164,7 @@ const installMockDom = () => {
 const installFakeChromeRuntime = () => {
   const sendMessage = vi.fn((message: { type?: string }) => {
     if (message.type === MessageTypes.ListWords) {
-      return Promise.resolve({ ok: true, words });
+      return Promise.resolve({ ok: true, words, highlightOnlyWords: [], highlightMutedWords: [] });
     }
     if (message.type === MessageTypes.GetHighlightPreference) {
       return Promise.resolve({ ok: true, preferences: { highlightEnabled: true } });
