@@ -22,7 +22,7 @@ import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { getDirectionFromLanguages } from "../../shared/translation/directions";
 import { normalizeWord } from "../../shared/word/normalize";
-import { updateWordEn, updateWordJa, updateWordZh } from "../../shared/word/store";
+import { updateWordEn, updateWordJa, updateWordZh, updateDefinitionEn, updateDefinitionJa, updateDefinitionZh } from "../../shared/word/store";
 
 export type TranslationRequestPayload = TranslationRequest;
 
@@ -151,12 +151,24 @@ export const handleTranslationRequest = async (
     const normalizedWord = normalizeWord(request.word);
     if (normalizedWord) {
       try {
+        // Save word translation
         if (request.targetLang === "zh") {
           await updateWordZh(normalizedWord, response.translatedWord);
         } else if (request.targetLang === "en") {
           await updateWordEn(normalizedWord, response.translatedWord);
         } else if (request.targetLang === "ja") {
           await updateWordJa(normalizedWord, response.translatedWord);
+        }
+
+        // Save definition translation if available
+        if (response.translatedDefinition && response.translatedDefinition.trim()) {
+          if (request.targetLang === "zh") {
+            await updateDefinitionZh(normalizedWord, response.translatedDefinition.trim());
+          } else if (request.targetLang === "en") {
+            await updateDefinitionEn(normalizedWord, response.translatedDefinition.trim());
+          } else if (request.targetLang === "ja") {
+            await updateDefinitionJa(normalizedWord, response.translatedDefinition.trim());
+          }
         }
       } catch {
         // ignore storage errors

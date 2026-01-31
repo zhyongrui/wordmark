@@ -375,14 +375,17 @@ const triggerLookup = async () => {
   };
 
   // Determine if we need to request translation
-  // Only request if we don't have word translation
-  // Note: We don't request just for definition translation because the translation API
-  // returns both word and definition translation together, and we don't want to
-  // overwrite existing word translations just to get definition translations
+  // Request if we don't have word translation OR definition translation (when enabled)
+  // Note: The translation API can return both word and definition translation.
+  // The updateWordXxx functions check if the value is the same before updating,
+  // we won't overwrite existing word translations when we just need definition translations.
   const needsWordTranslation = !hasExistingTranslation.hasWordTranslation;
+  const needsDefinitionTranslation =
+    definitionTranslationEnabled && !hasExistingTranslation.hasDefinitionTranslation;
+  const needsTranslation = needsWordTranslation || needsDefinitionTranslation;
 
-  // Only request translation if we need word translation
-  if (translationEnabled && directionInfo && needsWordTranslation) {
+  // Only request translation if we need data
+  if (translationEnabled && directionInfo && needsTranslation) {
     const translationPromise = requestTranslation(
       sessionId,
       entry.displayWord,
