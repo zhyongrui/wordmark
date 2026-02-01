@@ -292,6 +292,8 @@
         align-items: center;
         justify-content: space-between;
         width: 100%;
+        /* Keep the header height stable when the JA-only toggle appears/disappears. */
+        min-height: 18px;
       }
       .inline-toggle {
         display: inline-flex;
@@ -300,10 +302,13 @@
         font-size: 12px;
         color: #374151;
         white-space: nowrap;
+        line-height: 1;
+        height: 18px;
       }
       .inline-toggle input[type="checkbox"] {
         width: 14px;
         height: 14px;
+        margin: 0;
       }
       .direction-select select {
         padding-right: 120px;

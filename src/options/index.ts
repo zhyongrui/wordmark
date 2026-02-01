@@ -190,7 +190,9 @@ const updateJaHanPreferenceVisibility = () => {
   }
   const value = directionSelect.value;
   const shouldShow = currentMode === "dual" ? value.includes("JA") : value.startsWith("JA->");
+  // `hidden` can be overridden by author CSS in some contexts, so also force display.
   preferJaHanRow.hidden = !shouldShow;
+  preferJaHanRow.style.display = shouldShow ? "inline-flex" : "none";
 };
 
 const setJaHanPreferenceDisabled = (disabled: boolean) => {
