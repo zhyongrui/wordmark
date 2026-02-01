@@ -406,6 +406,30 @@ const initialize = () => {
     return;
   }
 
+  // Auto-collapse the 3 toggle sections when the user clicks anywhere else on the page.
+  const collapsibleAreas = [translationToggle, definitionBackfillToggle, definitionTranslationToggle].filter(
+    (el): el is HTMLElement => Boolean(el)
+  );
+  document.addEventListener(
+    "click",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      const clickedInside = collapsibleAreas.some((area) => area.contains(target));
+      if (clickedInside) {
+        return;
+      }
+      collapsibleAreas.forEach((area) => {
+        area.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((details) => {
+          details.open = false;
+        });
+      });
+    },
+    { capture: true }
+  );
+
   if (shortcutButton && chrome?.tabs?.create) {
     const openShortcutSettings = async () => {
       const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
