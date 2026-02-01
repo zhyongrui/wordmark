@@ -1,6 +1,6 @@
 export const MAX_GENERATED_DEFINITION_CHARS = 240;
 
-export type DefinitionLanguage = "en" | "zh";
+export type DefinitionLanguage = "en" | "zh" | "ja";
 
 export type DefinitionRequest = {
   word: string;

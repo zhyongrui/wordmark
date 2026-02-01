@@ -5,7 +5,7 @@ import {
   type DefinitionRequest,
   type DefinitionResponse
 } from "../types";
-import { sanitizeChineseDefinitionText, sanitizeEnglishDefinitionText } from "../sanitize";
+import { sanitizeChineseDefinitionText, sanitizeEnglishDefinitionText, sanitizeJapaneseDefinitionText } from "../sanitize";
 import { getGeminiConfig } from "../../translation/gemini";
 import type { DefinitionProvider } from "./provider";
 
@@ -162,13 +162,14 @@ const attachAbortSignal = (controller: AbortController, upstreamSignal: AbortSig
 };
 
 const buildPrompt = (request: DefinitionRequest): string => {
-  const languageLabel = request.sourceLang === "zh" ? "Chinese" : "English";
+  const languageLabel = request.sourceLang === "zh" ? "Chinese" : request.sourceLang === "ja" ? "Japanese" : "English";
   return [
     `Write a short ${languageLabel} dictionary-style definition for the given word.`,
     "Constraints:",
     "- Plain text only (no Markdown, no code fences).",
     "- 1–2 sentences.",
     "- Maximum 240 characters.",
+    ...(request.sourceLang === "ja" ? ["- Use Japanese only (no English), prefer natural Japanese, no romaji."] : []),
     "",
     `Word: ${request.word}`
   ].join("\n");
@@ -240,7 +241,9 @@ export const geminiDefinitionProvider: DefinitionProvider = {
         const sanitized =
           request.sourceLang === "zh"
             ? sanitizeChineseDefinitionText(candidate, { maxChars: 240 })
-            : sanitizeEnglishDefinitionText(candidate, { maxChars: 240 });
+            : request.sourceLang === "ja"
+              ? sanitizeJapaneseDefinitionText(candidate, { maxChars: 240 })
+              : sanitizeEnglishDefinitionText(candidate, { maxChars: 240 });
         if (!sanitized) {
           return createDefinitionError("provider_error", "Definition unavailable (empty provider response).");
         }

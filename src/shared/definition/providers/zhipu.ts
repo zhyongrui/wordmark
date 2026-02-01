@@ -5,7 +5,7 @@ import {
   type DefinitionRequest,
   type DefinitionResponse
 } from "../types";
-import { sanitizeChineseDefinitionText, sanitizeEnglishDefinitionText } from "../sanitize";
+import { sanitizeChineseDefinitionText, sanitizeEnglishDefinitionText, sanitizeJapaneseDefinitionText } from "../sanitize";
 import { getZhipuConfig } from "../../translation/zhipu";
 import type { DefinitionProvider } from "./provider";
 
@@ -25,13 +25,14 @@ const readErrorSnippet = async (response: Response): Promise<string | null> => {
 };
 
 const buildSystemPrompt = (sourceLang: DefinitionRequest["sourceLang"]): string => {
-  const languageLabel = sourceLang === "zh" ? "Chinese" : "English";
+  const languageLabel = sourceLang === "zh" ? "Chinese" : sourceLang === "ja" ? "Japanese" : "English";
   return [
     `Write a short ${languageLabel} dictionary-style definition for the given word.`,
     "Constraints:",
     "- Plain text only (no Markdown, no code fences).",
     "- 1-2 sentences.",
-    "- Maximum 240 characters."
+    "- Maximum 240 characters.",
+    ...(sourceLang === "ja" ? ["- Use Japanese only (no English), avoid romaji."] : [])
   ].join("\n");
 };
 
@@ -142,7 +143,9 @@ export const zhipuDefinitionProvider: DefinitionProvider = {
       const sanitized =
         request.sourceLang === "zh"
           ? sanitizeChineseDefinitionText(candidate, { maxChars: 240 })
-          : sanitizeEnglishDefinitionText(candidate, { maxChars: 240 });
+          : request.sourceLang === "ja"
+            ? sanitizeJapaneseDefinitionText(candidate, { maxChars: 240 })
+            : sanitizeEnglishDefinitionText(candidate, { maxChars: 240 });
       if (!sanitized) {
         return createDefinitionError("provider_error", "Definition unavailable (empty provider response).");
       }

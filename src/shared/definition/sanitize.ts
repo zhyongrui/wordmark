@@ -73,3 +73,20 @@ export const sanitizeChineseDefinitionText = (raw: string, options?: { maxChars?
 
   return text ? text : null;
 };
+
+export const sanitizeJapaneseDefinitionText = (raw: string, options?: { maxChars?: number }): string | null => {
+  // Japanese text can include Kanji/Kana and punctuation; sanitization is the same "plain text" pipeline.
+  if (typeof raw !== "string") {
+    return null;
+  }
+
+  const maxChars = options?.maxChars ?? MAX_GENERATED_DEFINITION_CHARS;
+  let text = raw;
+  text = stripCodeFences(text);
+  text = stripSurroundingQuotes(text);
+  text = stripLeadingMarker(text);
+  text = collapseWhitespace(text);
+  text = clampText(text, maxChars);
+
+  return text ? text : null;
+};
