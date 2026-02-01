@@ -22,7 +22,14 @@ import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { getDirectionFromLanguages } from "../../shared/translation/directions";
 import { normalizeWord } from "../../shared/word/normalize";
-import { updateWordEn, updateWordJa, updateWordZh } from "../../shared/word/store";
+import {
+  updateTranslatedDefinitionEn,
+  updateTranslatedDefinitionJa,
+  updateTranslatedDefinitionZh,
+  updateWordEn,
+  updateWordJa,
+  updateWordZh
+} from "../../shared/word/store";
 
 export type TranslationRequestPayload = TranslationRequest;
 
@@ -158,7 +165,24 @@ export const handleTranslationRequest = async (
         } else if (request.targetLang === "ja") {
           await updateWordJa(normalizedWord, response.translatedWord);
         }
-        // Note: definition translation is saved separately through the definition backfill flow
+
+        // If the request asked for definition translation, optionally persist it so the UI can
+        // reuse cached definition translations across lookups/toggle changes.
+        if (
+          settings.saveDefinitionTranslation &&
+          typeof request.definition === "string" &&
+          request.definition.trim() &&
+          typeof response.translatedDefinition === "string" &&
+          response.translatedDefinition.trim()
+        ) {
+          if (request.targetLang === "zh") {
+            await updateTranslatedDefinitionZh(normalizedWord, response.translatedDefinition);
+          } else if (request.targetLang === "en") {
+            await updateTranslatedDefinitionEn(normalizedWord, response.translatedDefinition);
+          } else if (request.targetLang === "ja") {
+            await updateTranslatedDefinitionJa(normalizedWord, response.translatedDefinition);
+          }
+        }
       } catch {
         // ignore storage errors
       }

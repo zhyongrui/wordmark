@@ -177,7 +177,7 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     expect(showTranslationLoading).toHaveBeenCalled();
   });
 
-  it("does not send TranslationRequest when translation is disabled (Spec 001 unchanged)", async () => {
+  it("does not send TranslationRequest when translation is disabled", async () => {
     translationEnabled = false;
 
     const chromeRuntime = installFakeChromeRuntime({
@@ -194,7 +194,7 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     await flushPromises();
 
     expect(showLookupOverlay).toHaveBeenCalledWith(
-      expect.objectContaining({ word: "hello", definition: "A greeting." })
+      expect.objectContaining({ word: "hello", definition: null })
     );
 
     const types = chromeRuntime.sendMessage.mock.calls.map(([message]) => (message as { type?: string }).type);

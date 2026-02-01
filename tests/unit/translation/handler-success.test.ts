@@ -129,4 +129,32 @@ describe("background translation handler success/degrade", () => {
       expect(response.error).toBe("quota_exceeded");
     }
   });
+
+  it("stores translated definition when definition translation is requested (and saving is enabled)", async () => {
+    await updateTranslationSettings({ enabled: true, providerId: "gemini", saveDefinitionTranslation: true });
+    await setTranslationApiKey("gemini", "test-key");
+
+    await recordLookup({
+      normalizedWord: "hello",
+      displayWord: "hello",
+      definition: "A greeting.",
+      pronunciationAvailable: false
+    });
+
+    const fetchMock = vi.fn(async () =>
+      makeGeminiResponse({ translatedWord: "你好", translatedDefinition: "问候语。" })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleTranslationRequest({
+      word: "hello",
+      definition: "A greeting.",
+      targetLang: "zh"
+    });
+
+    expect(response.ok).toBe(true);
+
+    const store = await readStore();
+    expect(store.wordsByKey["hello"]?.translatedDefinitionZh).toBe("问候语。");
+  });
 });

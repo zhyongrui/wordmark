@@ -310,8 +310,17 @@ const triggerLookup = async () => {
   const entry = response.entry;
   lookupSessionId += 1;
   const sessionId = lookupSessionId;
-  // When translation is disabled, don't show historical translations from previous lookups
-  const localDefinition = translationEnabled ? getDefinitionForLanguage(entry, selectionLanguage) : null;
+
+  // Display gating rules (even if we have cached data in storage):
+  // - translation disabled => hide translation + definition + definition translation
+  // - definition disabled => hide definition + definition translation
+  // - definition translation disabled => hide only definition translation
+  const showWordTranslation = translationEnabled;
+  const showDefinition = translationEnabled && definitionBackfillEnabled;
+  const showDefinitionTranslation = showDefinition && definitionTranslationEnabled;
+
+  const storedDefinition = getDefinitionForLanguage(entry, selectionLanguage);
+  const localDefinition = showDefinition ? storedDefinition : null;
   const suppressFallback = !translationEnabled;
   currentLookupSaveOverride = null;
   currentLookupHighlightOverride = null;
@@ -351,7 +360,7 @@ const triggerLookup = async () => {
 
   // Determine if we have existing cached data
   const hasExistingTranslation = checkExistingTranslation(entry, selectionLanguage, directionInfo?.targetLang);
-  const hasExistingDefinition = localDefinition != null;
+  const hasExistingDefinition = storedDefinition != null;
 
   showLookupOverlay({
     word: entry.displayWord,
@@ -361,6 +370,8 @@ const triggerLookup = async () => {
     suppressFallback,
     saveEnabled: resolveSaveEnabled(settings),
     highlightEnabled: resolveHighlightEnabled(settings),
+    showDefinitionArea: showDefinition,
+    showDefinitionTranslation: showDefinitionTranslation,
     anchorRect,
     onPronounce: () => {
       if (!playPronunciation(entry.displayWord)) {
@@ -369,8 +380,8 @@ const triggerLookup = async () => {
       }
     },
     // Pass existing translation data if available
-    initialTranslation: hasExistingTranslation.translation,
-    initialDefinitionTranslation: hasExistingTranslation.definitionTranslation
+    initialTranslation: showWordTranslation ? hasExistingTranslation.translation : undefined,
+    initialDefinitionTranslation: showDefinitionTranslation ? hasExistingTranslation.definitionTranslation : undefined
   });
 
   latestLookup = {
@@ -400,7 +411,7 @@ const triggerLookup = async () => {
   // 3. Definition Translation API: Translate definition from source to target language
   // Only call if we have a definition AND definition translation is enabled AND we don't have definition translation
   const needsDefinitionTranslation =
-    definitionTranslationEnabled &&
+    showDefinitionTranslation &&
     hasExistingDefinition &&  // Need source definition to translate
     !hasExistingTranslation.hasDefinitionTranslation;
 
@@ -423,7 +434,7 @@ const triggerLookup = async () => {
 
     // Call definition translation API if needed (translate definition to target language)
     if (needsDefinitionTranslation) {
-      const sourceDefinition = localDefinition ?? getDefinitionForLanguage(entry, selectionLanguage);
+      const sourceDefinition = storedDefinition;
       if (sourceDefinition) {
         void requestDefinitionTranslation(
           sessionId,
@@ -442,79 +453,6 @@ const triggerLookup = async () => {
     // Translation disabled but definition backfill enabled
     void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
   }
-};
-
-const requestTranslation = async (
-  sessionId: number,
-  word: string,
-  definition: string | null,
-  language: WordLanguage,
-  targetLang: TranslationTargetLang
-) => {
-  if (sessionId !== lookupSessionId) {
-    return;
-  }
-  if (!translationEnabled) {
-    return;
-  }
-
-  bumpAutoCloseIgnore(250);
-  const definitionAvailable =
-    typeof definition === "string" &&
-    definition.trim().length > 0 &&
-    definitionTranslationEnabled;
-  const preserveDefinitionArea = !definitionAvailable && definitionBackfillEnabled;
-  showTranslationLoading(language, { definitionAvailable });
-
-  const response = await sendMessage<TranslationResponse>({
-    type: MessageTypes.TranslationRequest,
-    payload: {
-      word,
-      definition: language === "en" && definitionTranslationEnabled ? definition : null,
-      sourceLang: language,
-      targetLang
-    }
-  });
-
-  if (sessionId !== lookupSessionId) {
-    return;
-  }
-  if (!translationEnabled) {
-    return;
-  }
-
-  if (!response) {
-    showTranslationError("Translation unavailable. Reload the extension and try again.", language, {
-      definitionAvailable,
-      preserveDefinitionArea
-    });
-    return;
-  }
-
-  if (response.ok) {
-    showTranslationResult(
-      {
-        translatedWord: response.translatedWord,
-        translatedDefinition: response.translatedDefinition ?? null
-      },
-      language,
-      { definitionAvailable, preserveDefinitionArea }
-    );
-    return;
-  }
-
-  if (response.error === "not_configured") {
-    showTranslationError("Translation not configured. Set an API key in Options.", language, {
-      definitionAvailable,
-      preserveDefinitionArea
-    });
-    return;
-  }
-
-  showTranslationError(response.message ?? "Translation unavailable.", language, {
-    definitionAvailable,
-    preserveDefinitionArea
-  });
 };
 
 // Request word translation only (no definition translation)
@@ -710,8 +648,8 @@ const syncTranslationEnabledState = async () => {
   definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
   const lookup = latestLookup;
   if (!translationEnabled && lookup && lookup.sessionId === lookupSessionId && isOverlayOpen()) {
-    const localDefinition = getDefinitionForLanguage(lookup, lookup.language);
-    resetTranslationUi(localDefinition, lookup.language, { suppressFallback: !translationEnabled });
+    // When translation is disabled, hide any existing translation/definition content from the overlay.
+    resetTranslationUi(null, lookup.language, { suppressFallback: true });
   }
 };
 

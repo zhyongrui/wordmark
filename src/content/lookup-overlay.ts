@@ -10,6 +10,9 @@ type OverlayContent = {
   anchorRect?: AnchorRect | null;
   saveEnabled?: boolean;
   highlightEnabled?: boolean;
+  // Display gating from settings (cached values should not "override" user toggles).
+  showDefinitionArea?: boolean;
+  showDefinitionTranslation?: boolean;
   initialTranslation?: string;
   initialDefinitionTranslation?: string;
 };
@@ -1354,12 +1357,27 @@ export const showLookupOverlay = (
   overlay.pronounce.style.display = content.pronunciationAvailable ? "inline-flex" : "none";
   overlay.pronounce.onclick = content.onPronounce ?? null;
 
+  const showDefinitionArea = content.showDefinitionArea === true;
+  const showDefinitionTranslation = content.showDefinitionTranslation === true;
+
   // Handle initial cached translation data
   const hasInitialTranslation = content.initialTranslation || content.initialDefinitionTranslation;
   if (hasInitialTranslation) {
-    // Display cached translation data
-    overlay.translation.hidden = false;
-    setDefinitionLabels(overlay, sourceLang, undefined);
+    // If the definition area is disabled by settings, keep the definition panel hidden
+    // even if cached data exists.
+    if (!showDefinitionArea) {
+      overlay.translation.hidden = true;
+      overlay.translationWord.textContent = "";
+      overlay.translationWordLabel.style.display = "none";
+      overlay.translationDefinitionLabel.style.display = "none";
+      overlay.translationDefinition.style.display = "none";
+      overlay.translationDefinition.textContent = "";
+      overlay.translationStatus.textContent = "";
+    } else {
+      // Display cached definition panel
+      overlay.translation.hidden = false;
+      setDefinitionLabels(overlay, sourceLang, undefined);
+    }
 
     // The definition area should show the translation result if we have word translation,
     // otherwise show the original definition (same-language definition)
@@ -1368,29 +1386,32 @@ export const showLookupOverlay = (
       overlay.definition.textContent = content.initialTranslation;
     }
 
-    // translationWord area shows the ORIGINAL definition (source language definition)
-    const sourceDefinition = normalizeEnglishDefinition(trimmedDefinition || "");
-    if (sourceDefinition && sourceDefinition !== "Definition unavailable.") {
-      overlay.translationWord.textContent = sourceDefinition;
-      overlay.translationWordLabel.textContent = `Definition (${sourceLang.toUpperCase()})`;
-    } else {
-      // No source definition available, hide the word definition section
-      overlay.translationWord.textContent = "";
-      overlay.translationWordLabel.style.display = "none";
-    }
+    if (showDefinitionArea) {
+      // translationWord area shows the ORIGINAL definition (source language definition)
+      const sourceDefinition = normalizeEnglishDefinition(trimmedDefinition || "");
+      if (sourceDefinition && sourceDefinition !== "Definition unavailable.") {
+        overlay.translationWord.textContent = sourceDefinition;
+        overlay.translationWordLabel.textContent = `Definition (${sourceLang.toUpperCase()})`;
+        overlay.translationWordLabel.style.display = "block";
+      } else {
+        // No source definition available, hide the word definition section
+        overlay.translationWord.textContent = "";
+        overlay.translationWordLabel.style.display = "none";
+      }
 
-    // translationDefinition area shows the TRANSLATION of the definition
-    if (content.initialDefinitionTranslation) {
-      overlay.translationDefinitionLabel.style.display = "block";
-      overlay.translationDefinition.style.display = "block";
-      overlay.translationDefinition.textContent = content.initialDefinitionTranslation;
-    } else {
-      overlay.translationDefinitionLabel.style.display = "none";
-      overlay.translationDefinition.style.display = "none";
-      overlay.translationDefinition.textContent = "";
-    }
+      // translationDefinition area shows the TRANSLATION of the definition
+      if (showDefinitionTranslation && content.initialDefinitionTranslation) {
+        overlay.translationDefinitionLabel.style.display = "block";
+        overlay.translationDefinition.style.display = "block";
+        overlay.translationDefinition.textContent = content.initialDefinitionTranslation;
+      } else {
+        overlay.translationDefinitionLabel.style.display = "none";
+        overlay.translationDefinition.style.display = "none";
+        overlay.translationDefinition.textContent = "";
+      }
 
-    overlay.translationStatus.textContent = "";
+      overlay.translationStatus.textContent = "";
+    }
   } else {
     overlay.translation.hidden = true;
     overlay.translationTitle.textContent = "English definition";
