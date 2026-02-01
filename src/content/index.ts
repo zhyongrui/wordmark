@@ -37,7 +37,7 @@ import {
 } from "../shared/translation/directions";
 import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/translation/settings";
 import type { TranslationResponse, TranslationTargetLang } from "../shared/translation/types";
-import { detectWordLanguage, normalizeWord, type WordLanguage } from "../shared/word/normalize";
+import { detectWordLanguage, isHanOnlyToken, normalizeWord, type WordLanguage } from "../shared/word/normalize";
 
 type LookupResponse =
   | {
@@ -235,21 +235,60 @@ const triggerLookup = async () => {
     dualPair: "EN<->ZH",
     lastDirection: "EN->ZH",
     definitionBackfillEnabled: false,
-    definitionTranslationEnabled: false
+    definitionTranslationEnabled: false,
+    preferJapaneseForHanSelections: true
   }));
   const selection = window.getSelection()?.toString() ?? "";
-  const selectionLanguage = detectWordLanguage(selection);
-  if (!selectionLanguage) {
-    ensureOverlayAutoClose();
-    showNotice("Select a single word to look up.");
-    return;
-  }
+  const detectedLanguage = detectWordLanguage(selection);
 
   const settings = await translationSettingsPromise;
   translationEnabled = Boolean(settings.enabled);
   definitionBackfillEnabled = Boolean(settings.definitionBackfillEnabled);
   definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
   currentLookupHighlightSetting = settings.highlightQueriedWords;
+
+  const refineSelectionLanguage = (raw: string, detected: WordLanguage | null): WordLanguage | null => {
+    if (!detected) {
+      return null;
+    }
+
+    // Only intervene for Kanji-only (Han-only) tokens, which are ambiguous between ZH/JA.
+    if (detected !== "zh" || !isHanOnlyToken(raw)) {
+      return detected;
+    }
+
+    const preferJaHan = settings.preferJapaneseForHanSelections !== false;
+    if (!preferJaHan) {
+      return detected;
+    }
+
+    const directionIncludesJa =
+      settings.mode === "single" ? settings.singleDirection.startsWith("JA->") : settings.dualPair.includes("JA");
+    if (!directionIncludesJa) {
+      return detected;
+    }
+
+    // In single mode, if the chosen direction expects Japanese source, treat Han-only as Japanese.
+    if (settings.mode === "single" && settings.singleDirection.startsWith("JA->")) {
+      return "ja";
+    }
+
+    // In dual mode, use page language as a hint to disambiguate.
+    const pageLangRaw = document?.documentElement?.lang ?? "";
+    const pageLang = typeof pageLangRaw === "string" ? pageLangRaw.toLowerCase() : "";
+    if (pageLang === "ja" || pageLang.startsWith("ja-")) {
+      return "ja";
+    }
+
+    return detected;
+  };
+
+  const selectionLanguage = refineSelectionLanguage(selection, detectedLanguage);
+  if (!selectionLanguage) {
+    ensureOverlayAutoClose();
+    showNotice("Select a single word to look up.");
+    return;
+  }
 
   let directionInfo:
     | {

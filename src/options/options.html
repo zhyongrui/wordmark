@@ -287,6 +287,24 @@
         align-items: center;
         width: 100%;
       }
+      .direction-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+      }
+      .inline-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #374151;
+        white-space: nowrap;
+      }
+      .inline-toggle input[type="checkbox"] {
+        width: 14px;
+        height: 14px;
+      }
       .direction-select select {
         padding-right: 120px;
       }
@@ -447,7 +465,13 @@
           </div>
 
           <div class="field-inline">
-            <label for="translation-direction">Direction</label>
+            <div class="direction-header">
+              <label for="translation-direction">Direction</label>
+              <label class="inline-toggle" id="ja-han-pref-row" hidden>
+                <input type="checkbox" id="prefer-ja-han" />
+                Prefer JA for Kanji-only
+              </label>
+            </div>
             <div class="direction-select">
               <select id="translation-direction" class="select-compact"></select>
               <span class="direction-hint" id="translation-direction-hint" hidden>查词自动识别语言</span>

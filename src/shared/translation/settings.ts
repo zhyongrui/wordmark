@@ -23,6 +23,8 @@ export type TranslationSettings = {
   saveDefinitionTranslation: boolean;
   saveQueriedWords: boolean;
   highlightQueriedWords: boolean;
+  // When enabled (default), treat Kanji-only (Han-only) selections as Japanese in Japanese directions.
+  preferJapaneseForHanSelections: boolean;
 };
 
 const defaultSettings: TranslationSettings = {
@@ -37,7 +39,8 @@ const defaultSettings: TranslationSettings = {
   saveDefinitionBackfill: true,
   saveDefinitionTranslation: true,
   saveQueriedWords: true,
-  highlightQueriedWords: true
+  highlightQueriedWords: true,
+  preferJapaneseForHanSelections: true
 };
 
 type StorageArea = {
@@ -148,6 +151,12 @@ const parseSettings = (input: unknown): TranslationSettings => {
   const highlightQueriedWordsRaw = (input as { highlightQueriedWords?: unknown }).highlightQueriedWords;
   const highlightQueriedWords =
     typeof highlightQueriedWordsRaw === "boolean" ? highlightQueriedWordsRaw : defaultSettings.highlightQueriedWords;
+  const preferJapaneseForHanSelectionsRaw = (input as { preferJapaneseForHanSelections?: unknown })
+    .preferJapaneseForHanSelections;
+  const preferJapaneseForHanSelections =
+    typeof preferJapaneseForHanSelectionsRaw === "boolean"
+      ? preferJapaneseForHanSelectionsRaw
+      : defaultSettings.preferJapaneseForHanSelections;
 
   return {
     enabled,
@@ -161,7 +170,8 @@ const parseSettings = (input: unknown): TranslationSettings => {
     saveDefinitionBackfill,
     saveDefinitionTranslation,
     saveQueriedWords,
-    highlightQueriedWords
+    highlightQueriedWords,
+    preferJapaneseForHanSelections
   };
 };
 
@@ -218,7 +228,11 @@ export const updateTranslationSettings = async (
     saveQueriedWords:
       typeof update.saveQueriedWords === "boolean" ? update.saveQueriedWords : current.saveQueriedWords,
     highlightQueriedWords:
-      typeof update.highlightQueriedWords === "boolean" ? update.highlightQueriedWords : current.highlightQueriedWords
+      typeof update.highlightQueriedWords === "boolean" ? update.highlightQueriedWords : current.highlightQueriedWords,
+    preferJapaneseForHanSelections:
+      typeof update.preferJapaneseForHanSelections === "boolean"
+        ? update.preferJapaneseForHanSelections
+        : current.preferJapaneseForHanSelections
   };
 
   await writeTranslationSettings(next);

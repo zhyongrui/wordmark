@@ -9,6 +9,7 @@ let lastDirection: TranslationDirection = "EN->ZH";
 let dualPair: "EN<->ZH" | "EN<->JA" | "ZH<->JA" = "EN<->ZH";
 let definitionBackfillEnabled = false;
 let definitionTranslationEnabled = false;
+let preferJapaneseForHanSelections = true;
 
 const showLookupOverlay = vi.fn();
 const showTranslationLoading = vi.fn();
@@ -25,7 +26,8 @@ vi.mock("../../../src/shared/translation/settings", () => {
       dualPair,
       lastDirection,
       definitionBackfillEnabled,
-      definitionTranslationEnabled
+      definitionTranslationEnabled,
+      preferJapaneseForHanSelections
     })),
     updateTranslationSettings: vi.fn()
   };
@@ -150,6 +152,7 @@ beforeEach(() => {
   dualPair = "EN<->ZH";
   definitionBackfillEnabled = false;
   definitionTranslationEnabled = false;
+  preferJapaneseForHanSelections = true;
   installMinimalDom();
 });
 
@@ -327,5 +330,27 @@ describe("Spec 002 shortcut-triggered auto-translate", () => {
     const payload = translationCall?.[0] as { payload?: { targetLang?: string; sourceLang?: string } };
     expect(payload.payload?.targetLang).toBe("ja");
     expect(payload.payload?.sourceLang).toBe("en");
+  });
+
+  it("treats Kanji-only selections as Japanese in JA directions when enabled", async () => {
+    translationEnabled = true;
+    singleDirection = "JA->ZH";
+    installMinimalDom("学校");
+
+    const chromeRuntime = installFakeChromeRuntime({
+      onLookup: () => ({
+        ok: true,
+        entry: { displayWord: "学校", pronunciationAvailable: true, definitionSource: "none" }
+      }),
+      onTranslate: () => ({ ok: true, translatedWord: "学校" })
+    });
+
+    await import("../../../src/content/index");
+
+    chromeRuntime.dispatchLookupTrigger();
+    await flushPromises();
+
+    expect(showLookupOverlay).toHaveBeenCalled();
+    expect(showNotice).not.toHaveBeenCalled();
   });
 });

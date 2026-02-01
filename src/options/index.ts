@@ -36,6 +36,8 @@ const modeSingleButton = byId<HTMLButtonElement>("translation-mode-single");
 const modeDualButton = byId<HTMLButtonElement>("translation-mode-dual");
 const directionSelect = byId<HTMLSelectElement>("translation-direction");
 const directionHint = byId<HTMLSpanElement>("translation-direction-hint");
+const preferJaHanRow = byId<HTMLElement>("ja-han-pref-row");
+const preferJaHanCheckbox = byId<HTMLInputElement>("prefer-ja-han");
 const providerSelect = byId<HTMLSelectElement>("translation-provider");
 const apiKeyInput = byId<HTMLInputElement>("translation-api-key");
 const saveButton = byId<HTMLButtonElement>("translation-save");
@@ -182,6 +184,21 @@ const setDirectionOptions = (mode: "single" | "dual", settings: { singleDirectio
   }
 };
 
+const updateJaHanPreferenceVisibility = () => {
+  if (!preferJaHanRow || !directionSelect) {
+    return;
+  }
+  const value = directionSelect.value;
+  const shouldShow = currentMode === "dual" ? value.includes("JA") : value.startsWith("JA->");
+  preferJaHanRow.hidden = !shouldShow;
+};
+
+const setJaHanPreferenceDisabled = (disabled: boolean) => {
+  if (preferJaHanCheckbox) {
+    preferJaHanCheckbox.disabled = disabled;
+  }
+};
+
 const updateModeUi = (mode: "single" | "dual") => {
   if (modeSingleButton) {
     modeSingleButton.setAttribute("aria-pressed", String(mode === "single"));
@@ -201,6 +218,7 @@ const setModeControlsDisabled = (disabled: boolean) => {
   if (directionSelect) {
     directionSelect.disabled = disabled;
   }
+  setJaHanPreferenceDisabled(disabled);
 };
 
 const updateProviderVisibility = () => {
@@ -265,6 +283,9 @@ const refresh = async () => {
 
   const settings = await readTranslationSettings();
   enabledCheckbox.checked = settings.enabled;
+  if (preferJaHanCheckbox) {
+    preferJaHanCheckbox.checked = settings.preferJapaneseForHanSelections;
+  }
   if (saveQueriedWordsCheckbox) {
     saveQueriedWordsCheckbox.checked = settings.saveQueriedWords;
   }
@@ -290,6 +311,7 @@ const refresh = async () => {
   currentMode = settings.mode;
   updateModeUi(settings.mode);
   setDirectionOptions(settings.mode, settings);
+  updateJaHanPreferenceVisibility();
   setModeControlsDisabled(!settings.enabled);
   updateProviderVisibility();
 
@@ -362,6 +384,8 @@ const initialize = () => {
     !modeDualButton ||
     !directionSelect ||
     !directionHint ||
+    !preferJaHanRow ||
+    !preferJaHanCheckbox ||
     !providerSelect ||
     !apiKeyInput ||
     !saveButton ||
@@ -522,7 +546,14 @@ const initialize = () => {
       } else {
         await updateTranslationSettings({ singleDirection: directionSelect.value });
       }
+      updateJaHanPreferenceVisibility();
       await refresh();
+    })();
+  });
+
+  preferJaHanCheckbox.addEventListener("change", () => {
+    void (async () => {
+      await updateTranslationSettings({ preferJapaneseForHanSelections: preferJaHanCheckbox.checked });
     })();
   });
 

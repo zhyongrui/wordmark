@@ -44,6 +44,7 @@ describe("translation settings", () => {
     expect(settings.lastDirection).toBe("EN->ZH");
     expect(settings.definitionBackfillEnabled).toBe(false);
     expect(settings.definitionTranslationEnabled).toBe(false);
+    expect(settings.preferJapaneseForHanSelections).toBe(true);
   });
 
   it("persists updates and round-trips", async () => {
@@ -76,6 +77,7 @@ describe("translation settings", () => {
     expect(stored.lastDirection).toBe("ZH->EN");
     expect(stored.definitionBackfillEnabled).toBe(true);
     expect(stored.definitionTranslationEnabled).toBe(true);
+    expect(stored.preferJapaneseForHanSelections).toBe(true);
 
     const chromeRef = globalThis as unknown as { chrome: { storage: { local: { set: ReturnType<typeof vi.fn> } } } };
     expect(chromeRef.chrome.storage.local.set).toHaveBeenCalled();
@@ -104,5 +106,6 @@ describe("translation settings", () => {
     expect(stored.singleDirection).toBe("EN->JA");
     expect(stored.dualPair).toBe("EN<->JA");
     expect(stored.lastDirection).toBe("EN->JA");
+    expect(stored.preferJapaneseForHanSelections).toBe(true);
   });
 });

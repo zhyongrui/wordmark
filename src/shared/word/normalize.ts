@@ -46,3 +46,7 @@ export const normalizeWord = (raw: string): string | null => {
 export const detectWordLanguage = (raw: string): WordLanguage | null => {
   return normalizeSelection(raw)?.language ?? null;
 };
+
+export const isHanOnlyToken = (raw: string): boolean => {
+  return HAN_TOKEN_PATTERN.test(raw.trim());
+};
