@@ -9,7 +9,7 @@ import {
 import { readTranslationSettings, TRANSLATION_SETTINGS_KEY } from "../shared/translation/settings";
 import type { TranslationDirection } from "../shared/translation/settings";
 import { filterWordEntries, sortWordEntries } from "../shared/word/list";
-import { detectWordLanguage, type WordLanguage } from "../shared/word/normalize";
+import { detectWordLanguage, isHanOnlyToken, type WordLanguage } from "../shared/word/normalize";
 
 type WordsResponse =
   | { ok: true; words: WordEntry[]; highlightOnlyWords?: string[] }
@@ -91,6 +91,7 @@ let listDirection: TranslationDirection = "EN->ZH";
 let lastDirectionFromSettings: TranslationDirection = "EN->ZH";
 let dualDirections: [TranslationDirection, TranslationDirection] = ["EN->ZH", "ZH->EN"];
 let listLanguageFilter: "all" | "en" | "zh" | "ja" = "all";
+let preferJapaneseForHanSelections = true;
 
 const formatCount = (count: number) => `${count} ${count === 1 ? "time" : "times"}`;
 
@@ -135,7 +136,22 @@ const updateCountVisibility = () => {
 };
 
 const getEntryLanguage = (entry: WordEntry): WordLanguage | null => {
-  return detectWordLanguage(entry.normalizedWord) ?? detectWordLanguage(entry.displayWord);
+  const language = detectWordLanguage(entry.normalizedWord) ?? detectWordLanguage(entry.displayWord);
+  if (!language) {
+    return null;
+  }
+
+  // Kanji-only tokens are ambiguous between ZH and JA. When the user is viewing a JA-source
+  // direction, treat Han-only entries as JA if the preference is enabled.
+  if (translationEnabled && language === "zh" && preferJapaneseForHanSelections) {
+    const activeDirection = getActiveDirection();
+    const { source: sourceLanguage } = getDirectionDetails(activeDirection);
+    if (sourceLanguage === "ja" && (isHanOnlyToken(entry.displayWord) || isHanOnlyToken(entry.normalizedWord))) {
+      return "ja";
+    }
+  }
+
+  return language;
 };
 
 const getLabelForEntry = (entry: WordEntry, sourceLanguage: WordLanguage | null): string => {
@@ -366,6 +382,7 @@ const refreshTranslationSettings = async () => {
   translationEnabled = settings.enabled;
   translationMode = settings.mode;
   singleDirection = settings.singleDirection;
+  preferJapaneseForHanSelections = settings.preferJapaneseForHanSelections !== false;
   const nextDualDirections = getDualPairDirections(settings.dualPair);
   const pairChanged =
     nextDualDirections[0] !== dualDirections[0] || nextDualDirections[1] !== dualDirections[1];

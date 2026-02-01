@@ -13,6 +13,7 @@ const ENGLISH_WORD_SOURCE = "[A-Za-z]+(?:['-][A-Za-z]+)*";
 const ENGLISH_WORD_PATTERN = new RegExp(ENGLISH_WORD_SOURCE, "g");
 const ENGLISH_LETTER_PATTERN = /[A-Za-z]/;
 const HAN_LETTER_PATTERN = /\p{Script=Han}/u;
+const JAPANESE_KANA_PATTERN = /[\p{Script=Hiragana}\p{Script=Katakana}\u30FC]/u;
 const IGNORED_TAGS = new Set([
   "input",
   "textarea",
@@ -73,33 +74,56 @@ const isIgnoredElement = (element: Element | null): boolean => {
 };
 
 let hasChineseWords = false;
+let hasJapaneseWords = false;
 let highlightPattern: RegExp = ENGLISH_WORD_PATTERN;
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export const buildHighlightPattern = (
   words: string[]
-): { pattern: RegExp; hasChineseWords: boolean } => {
+): { pattern: RegExp; hasChineseWords: boolean; hasJapaneseWords: boolean } => {
   const chineseWords = words.filter((word) => HAN_LETTER_PATTERN.test(word));
-  if (chineseWords.length === 0) {
-    return { pattern: ENGLISH_WORD_PATTERN, hasChineseWords: false };
+
+  const japaneseWords = words.filter((word) => JAPANESE_KANA_PATTERN.test(word));
+
+  if (chineseWords.length === 0 && japaneseWords.length === 0) {
+    return { pattern: ENGLISH_WORD_PATTERN, hasChineseWords: false, hasJapaneseWords: false };
   }
 
-  chineseWords.sort((a, b) => b.length - a.length);
-  const source = chineseWords.map(escapeRegExp).join("|");
-  if (!source) {
-    return { pattern: ENGLISH_WORD_PATTERN, hasChineseWords: false };
+  const sources: string[] = [ENGLISH_WORD_SOURCE];
+
+  if (chineseWords.length > 0) {
+    chineseWords.sort((a, b) => b.length - a.length);
+    const hanSource = chineseWords.map(escapeRegExp).join("|");
+    if (hanSource) {
+      sources.push(`(?:${hanSource})`);
+    }
+  }
+
+  if (japaneseWords.length > 0) {
+    japaneseWords.sort((a, b) => b.length - a.length);
+    const jaSource = japaneseWords.map(escapeRegExp).join("|");
+    if (jaSource) {
+      sources.push(`(?:${jaSource})`);
+    }
+  }
+
+  const source = sources.join("|");
+  if (source === ENGLISH_WORD_SOURCE) {
+    return { pattern: ENGLISH_WORD_PATTERN, hasChineseWords: false, hasJapaneseWords: false };
   }
 
   return {
-    pattern: new RegExp(`${ENGLISH_WORD_SOURCE}|(?:${source})`, "gu"),
-    hasChineseWords: true
+    pattern: new RegExp(source, "gu"),
+    hasChineseWords: chineseWords.length > 0,
+    hasJapaneseWords: japaneseWords.length > 0
   };
 };
 
 const rebuildHighlightPattern = (words: Set<string>) => {
   const next = buildHighlightPattern(Array.from(words));
   hasChineseWords = next.hasChineseWords;
+  hasJapaneseWords = next.hasJapaneseWords;
   highlightPattern = next.pattern;
 };
 
@@ -107,8 +131,12 @@ const shouldProcessTextNode = (node: Text): boolean => {
   if (!node.nodeValue) {
     return false;
   }
-  if (hasChineseWords) {
-    if (!ENGLISH_LETTER_PATTERN.test(node.nodeValue) && !HAN_LETTER_PATTERN.test(node.nodeValue)) {
+  if (hasChineseWords || hasJapaneseWords) {
+    if (
+      !ENGLISH_LETTER_PATTERN.test(node.nodeValue) &&
+      !HAN_LETTER_PATTERN.test(node.nodeValue) &&
+      !(hasJapaneseWords && JAPANESE_KANA_PATTERN.test(node.nodeValue))
+    ) {
       return false;
     }
   } else if (!ENGLISH_LETTER_PATTERN.test(node.nodeValue)) {

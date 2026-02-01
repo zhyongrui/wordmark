@@ -11,7 +11,12 @@ let translationSettings: TranslationSettings = {
   dualPair: "EN<->ZH",
   lastDirection: "EN->ZH",
   definitionBackfillEnabled: false,
-  definitionTranslationEnabled: false
+  definitionTranslationEnabled: false,
+  saveDefinitionBackfill: true,
+  saveDefinitionTranslation: true,
+  saveQueriedWords: true,
+  highlightQueriedWords: true,
+  preferJapaneseForHanSelections: true
 };
 
 let words: WordEntry[] = [];
@@ -222,7 +227,12 @@ describe("popup direction filtering", () => {
       dualPair: "EN<->ZH",
       lastDirection: "EN->ZH",
       definitionBackfillEnabled: false,
-      definitionTranslationEnabled: false
+      definitionTranslationEnabled: false,
+      saveDefinitionBackfill: true,
+      saveDefinitionTranslation: true,
+      saveQueriedWords: true,
+      highlightQueriedWords: true,
+      preferJapaneseForHanSelections: true
     };
     words = [
       buildWord({ normalizedWord: "hello", displayWord: "hello", wordZh: "你好" }),
@@ -282,7 +292,12 @@ describe("popup direction filtering", () => {
       dualPair: "EN<->ZH",
       lastDirection: "ZH->EN",
       definitionBackfillEnabled: false,
-      definitionTranslationEnabled: false
+      definitionTranslationEnabled: false,
+      saveDefinitionBackfill: true,
+      saveDefinitionTranslation: true,
+      saveQueriedWords: true,
+      highlightQueriedWords: true,
+      preferJapaneseForHanSelections: true
     };
 
     const elements = installMockDom();
@@ -312,7 +327,12 @@ describe("popup direction filtering", () => {
       dualPair: "EN<->ZH",
       lastDirection: "EN->ZH",
       definitionBackfillEnabled: false,
-      definitionTranslationEnabled: false
+      definitionTranslationEnabled: false,
+      saveDefinitionBackfill: true,
+      saveDefinitionTranslation: true,
+      saveQueriedWords: true,
+      highlightQueriedWords: true,
+      preferJapaneseForHanSelections: true
     };
 
     words = [
