@@ -1,5 +1,5 @@
 import type { DefinitionBackfillRequestPayload, DefinitionBackfillResponse } from "../../shared/messages";
-import { normalizeSelection } from "../../shared/word/normalize";
+import { isHanOnlyToken, normalizeSelection } from "../../shared/word/normalize";
 import { updateDefinitionEn, updateDefinitionZh, updateDefinitionJa } from "../../shared/word/store";
 import { updateTranslatedDefinitionEn, updateTranslatedDefinitionZh, updateTranslatedDefinitionJa } from "../../shared/word/store";
 import { geminiDefinitionProvider } from "../../shared/definition/providers/gemini";
@@ -173,7 +173,13 @@ export const handleDefinitionBackfillRequest = async (
     }
   }
 
-  const sourceLang = selection.language;
+  // Allow the content script to disambiguate Kanji-only selections between ZH/JA.
+  // We only accept an override in the ambiguous case (Han-only token detected as ZH but user wants JA).
+  const explicitSourceLang = payload.sourceLang;
+  const sourceLang: WordLanguage =
+    explicitSourceLang === "ja" && selection.language === "zh" && isHanOnlyToken(payload.word)
+      ? "ja"
+      : selection.language;
   const translateDefinitions = settings.definitionTranslationEnabled;
 
   // Determine target language based on user's translation direction settings

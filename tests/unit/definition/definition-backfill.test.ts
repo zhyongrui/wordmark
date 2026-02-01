@@ -98,4 +98,28 @@ describe("definition backfill handler", () => {
       expect(response.definitionZh).toBeNull();
     }
   });
+
+  it("accepts an explicit JA sourceLang for Kanji-only tokens", async () => {
+    await updateTranslationSettings({
+      enabled: true,
+      providerId: "gemini",
+      mode: "single",
+      singleDirection: "JA->ZH",
+      definitionBackfillEnabled: true,
+      definitionTranslationEnabled: false
+    });
+    await setTranslationApiKey("gemini", "AIzaFakeKeyForTest");
+
+    generateDefinition.mockResolvedValue({ ok: true, definitionText: "学校。教育を行う機関。", definitionLang: "ja" });
+
+    const response = await handleDefinitionBackfillRequest({ word: "学校", sourceLang: "ja" });
+
+    expect(generateDefinition).toHaveBeenCalledWith({ word: "学校", sourceLang: "ja" }, expect.any(String));
+    expect(response.ok).toBe(true);
+    if (response.ok) {
+      expect(response.definitionSourceLang).toBe("ja");
+      expect(response.definitionJa).toBe("学校。教育を行う機関。");
+      expect(response.definitionZh).toBeNull();
+    }
+  });
 });

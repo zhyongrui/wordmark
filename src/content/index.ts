@@ -652,7 +652,7 @@ const requestDefinitionBackfill = async (sessionId: number, word: string, source
 
   const response = await sendMessage<DefinitionBackfillResponse>({
     type: MessageTypes.DefinitionBackfillRequest,
-    payload: { word }
+    payload: { word, sourceLang }
   });
 
   if (sessionId !== lookupSessionId) {

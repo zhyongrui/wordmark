@@ -29,6 +29,9 @@ export type DefinitionSource = "local" | "generated" | "none";
 
 export type DefinitionBackfillRequestPayload = {
   word: string;
+  // Optional: provide the source language chosen by the content script.
+  // Used to disambiguate Kanji-only (Han-only) selections between ZH/JA.
+  sourceLang?: "en" | "zh" | "ja";
 };
 
 export type DefinitionBackfillResponse =
