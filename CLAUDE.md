@@ -79,22 +79,45 @@ type WordEntry = {
 - Six translation directions: EN→ZH, ZH→EN, EN→JA, JA→EN, ZH→JA, JA→ZH
 - Settings stored in `chrome.storage.local` under key `wordmark:translation:settings`
 
+**Target Language Inference in Dual Mode**:
+- Content script passes explicit `targetLang` from current translation direction to backend
+- Backend (`definition-backfill.ts`) prioritizes provided targetLang over inference
+- Fallback logic: `getDualPairLanguages(dualPair)` → target is the other language in the pair
+- Example: In ZH↔JA mode, if sourceLang is "ja", targetLang is "zh"
+
 ### Language Detection and Disambiguation
 
 **Important**: Japanese language detection has special handling for Kanji-only (Han-only) tokens which are ambiguous between Chinese and Japanese.
 
-The detection logic in `src/content/index.ts:refineSelectionLanguage()` uses multiple strategies:
+**Setting**: `preferJapaneseForHanSelections` (default: `true`)
+- Only shows in options when translation direction includes Japanese
+- Single mode: shows when source language is Japanese (JA→XX)
+- Dual mode: shows when language pair includes Japanese (XX↔JA)
 
-1. **Cache-based detection**: Checks if the word has an existing Japanese definition in local storage
-2. **Context-based detection**: Checks if the surrounding sentence contains Japanese kana (hiragana/katakana)
-3. **Page language detection**: Falls back to `<html lang="ja">` attribute
+The detection logic in `src/content/index.ts:refineSelectionLanguage()` uses three strategies (in priority order):
 
-This is controlled by the `preferJapaneseForHanSelections` setting (default: `true`).
+1. **Cache-based detection** (strongest positive signal):
+   - Checks `wordsCache` (Map<string, WordEntry>) for existing Japanese definition
+   - If `entry.definitionJa` exists and has content → returns "ja"
+   - Cache is synced via `applyHighlightState()` and `chrome.storage.onChanged`
+
+2. **Context-based detection** (very strong signal):
+   - `checkSentenceForKana()` uses 4-layer strategy to detect kana:
+     a. Check full container text content for kana
+     b. Check parent element's text (wider context)
+     c. Extract and check sentence (original logic, sentence delimiters: 。．！!?？\n)
+     d. Extend selection range to get surrounding text nodes
+   - Kana pattern: `/[\u3040-\u309F\u30A0-\u30FF\u30FC]/u` (Hiragana, Katakana, Prolonged mark)
+
+3. **Page language detection** (fallback):
+   - Checks `<html lang="ja">` or `<html lang="ja-JP">` attribute
 
 **Language detection priority** (`src/shared/word/normalize.ts`):
-1. Han-only pattern (汉字 only) → detected as Chinese
-2. Japanese kana pattern (must contain kana) → detected as Japanese
-3. English alphabet pattern → detected as English
+1. Han-only pattern (汉字 only, `HAN_TOKEN_PATTERN`) → detected as Chinese
+2. Japanese kana pattern (must contain kana, `JAPANESE_TOKEN_PATTERN`) → detected as Japanese
+3. English alphabet pattern (`ENGLISH_TOKEN_PATTERN`) → detected as English
+
+**Note**: The cache-based and context-based strategies are more reliable than page language detection, especially for mixed-language content or pages without proper language attributes.
 
 ### Storage Architecture
 
@@ -119,6 +142,10 @@ Same-language definitions (e.g., English definition for English words) are provi
 ### Content Script Initialization
 The content script (`src/content/index.ts`) initializes multiple subsystems:
 - Selection tracking and overlay positioning
+- **`wordsCache`**: `Map<string, WordEntry>` for language disambiguation
+  - Populated by `applyHighlightState()` when syncing word lists
+  - Updated via `chrome.storage.onChanged` listener
+  - Used in `refineSelectionLanguage()` for cache-based language detection
 - Word highlighting engine
 - Storage synchronization via `chrome.storage.onChanged`
 - Translation and definition backfill handlers
