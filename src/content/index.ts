@@ -108,6 +108,9 @@ let lookupSessionId = 0;
 let translationEnabled = false;
 let definitionBackfillEnabled = false;
 let definitionTranslationEnabled = false;
+
+// Cache for word definitions to enable language disambiguation
+let wordsCache: Map<string, WordEntry> = new Map();
 let latestLookup:
   | {
       sessionId: number;
@@ -247,6 +250,62 @@ const triggerLookup = async () => {
   definitionTranslationEnabled = Boolean(settings.definitionTranslationEnabled);
   currentLookupHighlightSetting = settings.highlightQueriedWords;
 
+  // Helper function to check if the sentence containing the selection has Japanese kana
+  const checkSentenceForKana = (): boolean => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return false;
+    }
+
+    const range = selection.getRangeAt(0);
+    let container = range.commonAncestorContainer;
+
+    // If container is a text node, get its parent element
+    if (container.nodeType === Node.TEXT_NODE) {
+      container = container.parentElement;
+    }
+
+    if (!container) {
+      return false;
+    }
+
+    // Get the full text content of the container
+    const fullText = container.textContent ?? "";
+    if (!fullText) {
+      return false;
+    }
+
+    // Find the position of selected text in the full text
+    const selectedText = selection.toString() ?? "";
+    const selectedTextIndex = fullText.indexOf(selectedText);
+    if (selectedTextIndex === -1) {
+      return false;
+    }
+
+    // Define sentence delimiters (Japanese and Chinese punctuation)
+    const sentenceDelimiters = /[。．！!?？\n]/;
+
+    // Find sentence start: go back from selection to find delimiter or start of text
+    let sentenceStart = selectedTextIndex;
+    while (sentenceStart > 0 && !sentenceDelimiters.test(fullText[sentenceStart - 1])) {
+      sentenceStart--;
+    }
+
+    // Find sentence end: go forward from selection to find delimiter or end of text
+    let sentenceEnd = selectedTextIndex + selectedText.length;
+    while (sentenceEnd < fullText.length && !sentenceDelimiters.test(fullText[sentenceEnd])) {
+      sentenceEnd++;
+    }
+
+    // Extract the complete sentence
+    const sentence = fullText.slice(sentenceStart, sentenceEnd);
+
+    // Check if sentence contains Japanese kana (hiragana or katakana)
+    // This range covers: Hiragana (3040-309F), Katakana (30A0-30FF), Prolonged mark (30FC)
+    const kanaPattern = /[\u3040-\u309F\u30A0-\u30FF\u30FC]/u;
+    return kanaPattern.test(sentence);
+  };
+
   const refineSelectionLanguage = (raw: string, detected: WordLanguage | null): WordLanguage | null => {
     if (!detected) {
       return null;
@@ -268,12 +327,27 @@ const triggerLookup = async () => {
       return detected;
     }
 
-    // In single mode, if the chosen direction expects Japanese source, treat Han-only as Japanese.
-    if (settings.mode === "single" && settings.singleDirection.startsWith("JA->")) {
+    // Use multiple heuristics to disambiguate Kanji-only tokens for both single and dual modes
+
+    // Strategy 1: Check if word has Japanese definition in local cache (strongest positive signal)
+    const normalizedWord = normalizeWord(raw);
+    if (normalizedWord && wordsCache.has(normalizedWord)) {
+      const entry = wordsCache.get(normalizedWord);
+      // If the word has a Japanese definition, it's definitely a Japanese word
+      if (entry?.definitionJa && typeof entry.definitionJa === "string" && entry.definitionJa.trim()) {
+        return "ja";
+      }
+      // Note: Don't use the absence of Japanese definition as evidence for Chinese
+      // The word might simply not have been looked up in Japanese context yet
+      // Continue to other strategies instead
+    }
+
+    // Strategy 2: Check if the sentence contains kana (very strong signal)
+    if (checkSentenceForKana()) {
       return "ja";
     }
 
-    // In dual mode, use page language as a hint to disambiguate.
+    // Strategy 3: Use page language as a hint
     const pageLangRaw = document?.documentElement?.lang ?? "";
     const pageLang = typeof pageLangRaw === "string" ? pageLangRaw.toLowerCase() : "";
     if (pageLang === "ja" || pageLang.startsWith("ja-")) {
@@ -780,6 +854,8 @@ const applyHighlightState = (
   );
   highlightOnlyWords = new Set(highlightOnly);
   highlightMutedWords = new Set(highlightMuted);
+  // Update words cache for language disambiguation
+  wordsCache = new Map(words.map((entry) => [entry.normalizedWord, entry]));
   updateHighlightWords();
 };
 
