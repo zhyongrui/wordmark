@@ -542,7 +542,7 @@ const triggerLookup = async () => {
 
     // Call definition backfill API if needed (same-language definition)
     if (needsSameLanguageDefinition) {
-      void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage);
+      void requestDefinitionBackfill(sessionId, entry.displayWord, selectionLanguage, directionInfo?.targetLang);
     }
 
     // Call definition translation API if needed (translate definition to target language)
@@ -713,7 +713,12 @@ const requestDefinitionTranslation = async (
   });
 };
 
-const requestDefinitionBackfill = async (sessionId: number, word: string, sourceLang: WordLanguage) => {
+const requestDefinitionBackfill = async (
+  sessionId: number,
+  word: string,
+  sourceLang: WordLanguage,
+  targetLang?: TranslationTargetLang
+) => {
   if (sessionId !== lookupSessionId) {
     return;
   }
@@ -726,7 +731,7 @@ const requestDefinitionBackfill = async (sessionId: number, word: string, source
 
   const response = await sendMessage<DefinitionBackfillResponse>({
     type: MessageTypes.DefinitionBackfillRequest,
-    payload: { word, sourceLang }
+    payload: { word, sourceLang, targetLang }
   });
 
   if (sessionId !== lookupSessionId) {

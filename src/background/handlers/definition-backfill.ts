@@ -19,12 +19,12 @@ import { getQwenConfig } from "../../shared/translation/qwen";
 import { getVolcengineConfig } from "../../shared/translation/volcengine";
 import { getZhipuConfig } from "../../shared/translation/zhipu";
 import { handleTranslationRequest } from "./translation";
-import { getDirectionDetails } from "../../shared/translation/directions";
+import { getDirectionDetails, getDualPairLanguages } from "../../shared/translation/directions";
 import type { TranslationTargetLang } from "../../shared/translation/types";
 import type { WordLanguage } from "../../shared/word/normalize";
 
 const inSessionDeduper = createInSessionDeduper<DefinitionBackfillResponse>();
-const definitionTextCache = createInMemoryTtlCache<string>({ ttlMs: 20 * 60 * 1000 });
+const definitionTextCache = createInMemoryTtlCache<string>({ ttlMs: 7 * 24 * 60 * 60 * 1000 });
 
 const getProvider = (providerId: string) => {
   switch (providerId) {
@@ -182,15 +182,19 @@ export const handleDefinitionBackfillRequest = async (
       : selection.language;
   const translateDefinitions = settings.definitionTranslationEnabled;
 
-  // Determine target language based on user's translation direction settings
+  // Determine target language: prefer explicit targetLang from payload, then infer from settings
   let targetLang: TranslationTargetLang;
-  if (settings.mode === "single") {
+  if (payload.targetLang && (payload.targetLang === "en" || payload.targetLang === "zh" || payload.targetLang === "ja")) {
+    // Use explicitly provided target language from content script
+    targetLang = payload.targetLang;
+  } else if (settings.mode === "single") {
+    // Single mode: use the configured direction's target
     const directionDetails = getDirectionDetails(settings.singleDirection);
     targetLang = directionDetails.target;
   } else {
-    // For dual mode, use the opposite language from the source
-    const directionDetails = getDirectionDetails(settings.lastDirection);
-    targetLang = directionDetails.target;
+    // Dual mode: target is the other language in the current pair
+    const pairLanguages = getDualPairLanguages(settings.dualPair);
+    targetLang = pairLanguages[0] === sourceLang ? pairLanguages[1] : pairLanguages[0];
   }
 
   const cacheKey = makeCacheKey(provider.id, sourceLang, selection.normalizedWord);

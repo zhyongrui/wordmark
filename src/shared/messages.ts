@@ -32,6 +32,9 @@ export type DefinitionBackfillRequestPayload = {
   // Optional: provide the source language chosen by the content script.
   // Used to disambiguate Kanji-only (Han-only) selections between ZH/JA.
   sourceLang?: "en" | "zh" | "ja";
+  // Optional: provide the target language for definition translation.
+  // If not provided, will be inferred from translation direction settings.
+  targetLang?: "en" | "zh" | "ja";
 };
 
 export type DefinitionBackfillResponse =
