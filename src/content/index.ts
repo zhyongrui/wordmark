@@ -269,41 +269,65 @@ const triggerLookup = async () => {
       return false;
     }
 
-    // Get the full text content of the container
+    // Try to get text content from container and check for kana
+    // Use multiple strategies to be more robust
+    const kanaPattern = /[\u3040-\u309F\u30A0-\u30FF\u30FC]/u;
+
+    // Strategy 1: Check the full container text content
     const fullText = container.textContent ?? "";
-    if (!fullText) {
-      return false;
+    if (fullText && kanaPattern.test(fullText)) {
+      return true;
     }
 
-    // Find the position of selected text in the full text
+    // Strategy 2: Check parent element's text (if container is small)
+    if (container.parentElement) {
+      const parentText = container.parentElement.textContent ?? "";
+      if (parentText !== fullText && kanaPattern.test(parentText)) {
+        return true;
+      }
+    }
+
+    // Strategy 3: Extract and check the text around the selection
     const selectedText = selection.toString() ?? "";
     const selectedTextIndex = fullText.indexOf(selectedText);
-    if (selectedTextIndex === -1) {
-      return false;
+    if (selectedTextIndex !== -1) {
+      // Define sentence delimiters (Japanese and Chinese punctuation)
+      const sentenceDelimiters = /[。．！!?？\n]/;
+
+      // Find sentence start: go back from selection to find delimiter or start of text
+      let sentenceStart = selectedTextIndex;
+      while (sentenceStart > 0 && !sentenceDelimiters.test(fullText[sentenceStart - 1])) {
+        sentenceStart--;
+      }
+
+      // Find sentence end: go forward from selection to find delimiter or end of text
+      let sentenceEnd = selectedTextIndex + selectedText.length;
+      while (sentenceEnd < fullText.length && !sentenceDelimiters.test(fullText[sentenceEnd])) {
+        sentenceEnd++;
+      }
+
+      // Extract the complete sentence
+      const sentence = fullText.slice(sentenceStart, sentenceEnd);
+      if (kanaPattern.test(sentence)) {
+        return true;
+      }
     }
 
-    // Define sentence delimiters (Japanese and Chinese punctuation)
-    const sentenceDelimiters = /[。．！!?？\n]/;
-
-    // Find sentence start: go back from selection to find delimiter or start of text
-    let sentenceStart = selectedTextIndex;
-    while (sentenceStart > 0 && !sentenceDelimiters.test(fullText[sentenceStart - 1])) {
-      sentenceStart--;
+    // Strategy 4: Check the range's text content directly (includes surrounding text nodes)
+    try {
+      // Extend the range to get more context
+      const extendedRange = document.createRange();
+      extendedRange.setStart(range.startContainer, Math.max(0, range.startOffset - 50));
+      extendedRange.setEnd(range.endContainer, Math.min(range.endContainer.textContent?.length ?? 0, range.endOffset + 50));
+      const contextText = extendedRange.toString();
+      if (contextText && kanaPattern.test(contextText)) {
+        return true;
+      }
+    } catch {
+      // Ignore errors from range manipulation
     }
 
-    // Find sentence end: go forward from selection to find delimiter or end of text
-    let sentenceEnd = selectedTextIndex + selectedText.length;
-    while (sentenceEnd < fullText.length && !sentenceDelimiters.test(fullText[sentenceEnd])) {
-      sentenceEnd++;
-    }
-
-    // Extract the complete sentence
-    const sentence = fullText.slice(sentenceStart, sentenceEnd);
-
-    // Check if sentence contains Japanese kana (hiragana or katakana)
-    // This range covers: Hiragana (3040-309F), Katakana (30A0-30FF), Prolonged mark (30FC)
-    const kanaPattern = /[\u3040-\u309F\u30A0-\u30FF\u30FC]/u;
-    return kanaPattern.test(sentence);
+    return false;
   };
 
   const refineSelectionLanguage = (raw: string, detected: WordLanguage | null): WordLanguage | null => {
